@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Drawing In Live — penonton menggambar, langsung tampil di layar streaming</title>
-<meta name="description" content="Penonton menggambar lewat browser, hasilnya muncul real-time di OBS kamu sebagai Browser Source. Login Google read-only, bisa dibuka untuk publik atau khusus member.">
+<title>Drawing In Live — kanvas gambar kolaboratif real-time untuk streamer YouTube</title>
+<meta name="description" content="Drawing In Live adalah kanvas gambar kolaboratif real-time untuk streamer YouTube. Penonton menggambar dari browser mereka, dan setiap goresan langsung tampil di siaran lewat Browser Source OBS berlatar transparan.">
+<meta name="application-name" content="Drawing In Live">
 <link rel="icon" href="/static/img/favicon.svg">
 <link rel="stylesheet" href="/static/css/app.css">
 <link rel="stylesheet" href="/static/css/landing.css">
@@ -15,7 +16,7 @@
 <div class="scanlines"></div>
 
 <header class="topbar">
-  <a class="brand" href="/"><span class="tally-dot"></span> Drawing&nbsp;In&nbsp;Live</a>
+  <a class="brand" href="/"><span class="tally-dot"></span> Drawing In Live</a>
   <nav class="row-tight">
     <a class="btn btn--sm" href="#cara-kerja">Cara kerja</a>
     <a class="btn btn--sm" href="/join">Gabung room</a>
@@ -67,6 +68,50 @@
         <span class="muted">latensi ±60 ms</span>
       </figcaption>
     </figure>
+  </section>
+
+  <!--
+    Plain-language statement of what this application is and does.
+    Google's OAuth branding review checks that the homepage explains the app's
+    purpose and shows the same app name as the consent screen, so this block
+    states both in unstyled prose — in Indonesian for our users, and in English
+    because the reviewers read English.
+  -->
+  <section class="shell about" id="tentang">
+    <div class="panel about-panel">
+      <p class="eyebrow">Tentang aplikasi ini · About this app</p>
+      <h2 class="about-name">Drawing In Live</h2>
+
+      <p class="about-text">
+        <strong>Drawing In Live</strong> adalah aplikasi web kanvas gambar kolaboratif real-time
+        untuk kreator yang sedang siaran langsung di YouTube. Kreator masuk dengan Akun Google,
+        mendapat satu room permanen, lalu membagikan tautan room itu kepada penontonnya. Penonton
+        membuka tautan tersebut dan menggambar langsung dari browser di ponsel atau laptop mereka,
+        dan setiap goresan muncul seketika di layar siaran kreator melalui <em>Browser Source</em>
+        OBS berlatar transparan. Kreator dapat membekukan kanvas, menghapus goresan, menyetujui
+        atau mengeluarkan penonton, dan membatasi akses hanya untuk member channel-nya.
+      </p>
+
+      <p class="about-text" lang="en">
+        <strong>Drawing In Live</strong> is a real-time collaborative drawing canvas for YouTube
+        live streamers. A creator signs in with their Google Account, receives a permanent room,
+        and shares that room link with their audience. Viewers open the link and draw straight from
+        the browser on their phone or laptop, and every stroke appears instantly on the creator's
+        stream through a transparent OBS browser source. Creators can freeze the canvas, erase
+        strokes, approve or remove individual viewers, and restrict drawing to their channel
+        members.
+      </p>
+
+      <p class="about-note" lang="en">
+        Signing in uses Google OAuth with read-only scopes. The
+        <code>youtube.readonly</code> scope is used for one purpose only: reading the signed-in
+        creator's own public YouTube channel title and profile picture, which are displayed on
+        their dashboard and in the drawing room so viewers can confirm whose canvas they are
+        drawing on. Drawing In Live never uploads, modifies, or deletes anything on a channel, and
+        never stores passwords. See the <a href="/privacy">privacy policy</a> and
+        <a href="/terms">terms of service</a> for details.
+      </p>
+    </div>
   </section>
 
   <!-- ================= MARQUEE ================= -->

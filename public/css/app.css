@@ -184,10 +184,15 @@ code, .code {
   border-bottom: 1px solid var(--line);
 }
 
+/* Renders the application name exactly as registered on the OAuth consent
+   screen — same casing, ordinary spaces. Google's branding review compares the
+   two strings, and an uppercase transform or a non-breaking space is enough to
+   fail the match. */
 .brand {
   display: inline-flex; align-items: center; gap: 0.6rem;
   font-family: var(--display); font-weight: 800; font-size: 1rem;
-  letter-spacing: -0.02em; text-transform: uppercase;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   color: var(--paper); border: 0;
 }
 .brand:hover { color: var(--paper); }

@@ -63,6 +63,38 @@
   background: var(--ink-2);
 }
 
+/* --- about (purpose statement for OAuth review + real visitors) ----------- */
+.about { padding-block: clamp(1rem, 3vh, 2rem); }
+
+.about-panel { border-color: var(--line-hot); }
+
+.about-name {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  letter-spacing: -0.02em;
+  margin: 0.5rem 0 1rem;
+}
+
+.about-text {
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--paper-dim);
+  max-width: 78ch;
+  margin: 0 0 1rem;
+}
+.about-text strong { color: var(--paper); }
+.about-text:lang(en) { color: var(--paper-mute); }
+
+.about-note {
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: var(--paper-mute);
+  max-width: 78ch;
+  margin: 1.2rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--line);
+}
+
 /* --- marquee -------------------------------------------------------------- */
 .marquee {
   border-block: 1px solid var(--line);
