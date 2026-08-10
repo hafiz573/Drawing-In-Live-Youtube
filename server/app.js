@@ -102,20 +102,9 @@ function sendPage(res, name) {
 
 const page = (name) => (_req, res) => sendPage(res, name);
 
-/**
- * Public origin used to build the shareable draw/overlay links.
- * PUBLIC_ORIGIN wins when set — behind a CDN or tunnel the forwarded headers
- * can point at an internal hostname, and a wrong link here is one a creator
- * would paste into OBS.
- */
-function originOf(req) {
-  if (process.env.PUBLIC_ORIGIN) return process.env.PUBLIC_ORIGIN.replace(/\/+$/, '');
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  const proto = req.get('x-forwarded-proto')?.split(',')[0].trim() || req.protocol;
-  return `${proto}://${req.get('host')}`;
-}
+// Shared with the OAuth layer so the links a creator copies and the redirect
+// URI Google is handed can never disagree.
+const { originOf, redirectUri, isPinned } = require('./origin');
 
 // ---------------------------------------------------------------------------
 // Pages
@@ -253,6 +242,14 @@ function publicUser(user) {
 app.get('/api/session', (req, res) => {
   res.json({
     googleConfigured: google.isConfigured(),
+    // Public by definition — it travels in the authorisation URL anyway — and
+    // showing it turns redirect_uri_mismatch from a guessing game into a
+    // copy-paste fix.
+    oauth: {
+      redirectUri: redirectUri(req),
+      pinned: isPinned(),
+      requestHost: req.get('host'),
+    },
     creator: req.user ? publicUser(req.user) : null,
     viewer: req.viewer || null,
   });

@@ -45,14 +45,7 @@ function isConfigured() {
   return Boolean(clientId() && clientSecret());
 }
 
-function redirectUri(req) {
-  if (process.env.OAUTH_REDIRECT_URI) return process.env.OAUTH_REDIRECT_URI;
-  if (process.env.PUBLIC_ORIGIN) {
-    return `${process.env.PUBLIC_ORIGIN.replace(/\/+$/, '')}/auth/google/callback`;
-  }
-  const proto = req.get('x-forwarded-proto')?.split(',')[0].trim() || req.protocol;
-  return `${proto}://${req.get('host')}/auth/google/callback`;
-}
+const { redirectUri } = require('./origin');
 
 function buildAuthUrl({ req, state, scopes, offline = false, prompt }) {
   const params = new URLSearchParams({
