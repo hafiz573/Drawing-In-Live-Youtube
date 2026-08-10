@@ -6,7 +6,7 @@
   const { $, $$, toast, api, wireCopyButtons } = UI;
 
   let board = null;
-  let socket = null;
+  let live = null;
   let me = null;
   let settings = null;
   let viewers = [];
@@ -61,12 +61,17 @@
     return out;
   }
 
-  /** Push to the socket so every connected viewer/overlay updates immediately. */
-  function pushSettings(patch, { silent = false } = {}) {
+  /** Persist and broadcast so every viewer/overlay picks it up on their next poll. */
+  async function pushSettings(patch, { silent = false } = {}) {
     const next = { ...settings, ...patch };
-    socket.emit('o:settings', next);
-    fillForm(next);
-    if (!silent) toast('Setelan diterapkan.', 'good');
+    fillForm(next);   // optimistic: the form should never feel laggy
+    try {
+      const res = await live.owner('settings', { settings: next });
+      if (res.settings) fillForm(res.settings);
+      if (!silent) toast('Setelan diterapkan.', 'good');
+    } catch (err) {
+      toast(`Gagal menyimpan setelan: ${err.message}`, 'bad');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -124,21 +129,21 @@
         approve.className = `btn btn--sm${viewer.approved ? '' : ' btn--amber'}`;
         approve.textContent = viewer.approved ? 'Cabut' : 'Izinkan';
         approve.addEventListener('click', () =>
-          socket.emit('o:approve', { viewerId: viewer.id, approved: !viewer.approved }));
+          live.owner('approve', { viewerId: viewer.id, approved: !viewer.approved }).catch(() => {}));
         actions.appendChild(approve);
       }
 
       const wipe = document.createElement('button');
       wipe.className = 'btn btn--sm';
       wipe.textContent = 'Hapus gambar';
-      wipe.addEventListener('click', () => socket.emit('o:clearViewer', { viewerId: viewer.id }));
+      wipe.addEventListener('click', () => live.owner('clearViewer', { viewerId: viewer.id }).catch(() => {}));
 
       const kick = document.createElement('button');
       kick.className = 'btn btn--sm btn--danger';
       kick.textContent = 'Tendang';
       kick.addEventListener('click', () => {
         const ban = confirm(`Tendang ${viewer.name}?\n\nOK = blokir permanen (tidak bisa masuk lagi)\nBatal = tendang saja`);
-        socket.emit('o:kick', { viewerId: viewer.id, ban });
+        live.owner('kick', { viewerId: viewer.id, ban }).catch(() => {});
       });
 
       actions.append(wipe, kick);
@@ -216,10 +221,10 @@
   function wireControls() {
     $('#freezeBtn').addEventListener('click', () => pushSettings({ locked: !settings.locked }, { silent: true }));
 
-    $('#undoLastBtn').addEventListener('click', () => socket.emit('o:undo'));
+    $('#undoLastBtn').addEventListener('click', () => live.owner('undo').catch(() => {}));
 
     $('#clearAllBtn').addEventListener('click', () => {
-      if (confirm('Hapus seluruh isi kanvas untuk semua orang?')) socket.emit('o:clear');
+      if (confirm('Hapus seluruh isi kanvas untuk semua orang?')) live.owner('clear').catch(() => {});
     });
 
     $('#saveBtn').addEventListener('click', () => pushSettings(readForm()));
@@ -286,36 +291,47 @@
   }
 
   function connect() {
-    socket = io({ withCredentials: true });
+    setConn('idle', 'Menyinkronkan');
+    live = new LiveRoom({ roomCode: me.roomCode, role: 'owner' });
 
-    socket.on('connect', () => {
-      setConn('idle', 'Menyinkronkan');
-      socket.emit('owner:join');
-    });
-
-    socket.on('joined', (data) => {
+    live.on('joined', (data) => {
       fillForm(data.settings);
       board.setStrokes(data.strokes);
+      if (data.viewers) renderViewers(data.viewers);
       refreshStrokeCount();
       setConn('live', 'Live');
     });
 
-    socket.on('settings', (next) => fillForm(next));
-    socket.on('viewers', renderViewers);
-
-    socket.on('s:start', (d) => { board.addStroke({ ...d, pts: [d.x, d.y], done: false }); refreshStrokeCount(); });
-    socket.on('s:pts', (d) => board.appendPoints(d.id, d.pts));
-    socket.on('s:end', (d) => board.endStroke(d.id));
-    socket.on('remove', (d) => { board.removeStrokes(d.ids); refreshStrokeCount(); });
-    socket.on('clear', () => { board.clear(); refreshStrokeCount(); });
-
-    socket.on('denied', (d) => {
-      setConn('off', 'Sesi habis');
-      toast(d.message, 'bad');
-      if (d.code === 'session_expired') setTimeout(() => { location.href = '/login'; }, 1800);
+    live.on('resync', (data) => {
+      fillForm(data.settings);
+      board.setStrokes(data.strokes);
+      refreshStrokeCount();
     });
 
-    socket.on('disconnect', () => setConn('off', 'Terputus'));
+    live.on('settings', (next) => fillForm(next));
+    live.on('viewers', renderViewers);
+
+    live.on('stroke', (d) => {
+      if (!board.index.get(d.id)) board.addStroke({ ...d, pts: d.pts.slice(), done: d.done });
+      else {
+        board.appendPoints(d.id, d.pts);
+        if (d.done) board.endStroke(d.id);
+      }
+      refreshStrokeCount();
+    });
+    live.on('remove', (d) => { board.removeStrokes(d.ids); refreshStrokeCount(); });
+    live.on('clear', () => { board.clear(); refreshStrokeCount(); });
+
+    live.on('denied', (d) => {
+      setConn('off', 'Sesi habis');
+      toast(d.message, 'bad');
+      if (d.status === 401 || d.code === 'forbidden') setTimeout(() => { location.href = '/login'; }, 1800);
+    });
+
+    live.on('offline', () => setConn('off', 'Terputus'));
+    live.on('reconnected', () => setConn('live', 'Live'));
+
+    live.start();
   }
 
   // ---------------------------------------------------------------------------

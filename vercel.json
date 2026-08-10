@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "// regions": "Harus sama dengan region database. Neon ap-southeast-1 → sin1. Kalau salah region, tiap query menyeberang samudra dan latensi naik berkali-kali lipat.",
+  "regions": ["sin1"],
+
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "{views,public}/**",
+      "// maxDuration": "Long-poll menahan koneksi ~20 detik; beri ruang di atasnya.",
+      "maxDuration": 30
+    }
+  },
+
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index.js" }
+  ]
+}

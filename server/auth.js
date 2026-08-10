@@ -2,7 +2,6 @@
 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const cookieLib = require('cookie');
 const store = require('./db');
 
 const CREATOR_COOKIE = 'dil_creator';
@@ -127,24 +126,6 @@ function requireUser(req, res, next) {
   return res.redirect(`/login?next=${encodeURIComponent(req.originalUrl)}`);
 }
 
-// ---------------------------------------------------------------------------
-// Socket.IO handshake helpers
-// ---------------------------------------------------------------------------
-function parseHandshakeCookies(handshake) {
-  const header = handshake?.headers?.cookie;
-  if (!header) return {};
-  try {
-    return cookieLib.parse(header);
-  } catch {
-    return {};
-  }
-}
-
-/** Async: resolves the creator record behind a socket's session cookie. */
-const creatorFromHandshake = (hs) => creatorFromToken(parseHandshakeCookies(hs)[CREATOR_COOKIE]);
-/** Sync: a viewer's identity is self-contained in the JWT, no database round-trip. */
-const viewerFromHandshake = (hs) => viewerFromToken(parseHandshakeCookies(hs)[VIEWER_COOKIE]);
-
 function clearAllSessions(res) {
   res.clearCookie(CREATOR_COOKIE, baseCookie());
   res.clearCookie(VIEWER_COOKIE, baseCookie());
@@ -159,7 +140,5 @@ module.exports = {
   completeOAuth,
   attachIdentities,
   requireUser,
-  creatorFromHandshake,
-  viewerFromHandshake,
   clearAllSessions,
 };

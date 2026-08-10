@@ -19,8 +19,13 @@
   const gate = $('#gate');
   const connEl = $('#conn');
 
+  // Points are batched and shipped on this cadence. Long-polling makes each
+  // send a real HTTP request, so flushing per animation frame would be wasteful;
+  // a fifth of a second still reads as continuous on the overlay.
+  const FLUSH_MS = 200;
+
   let board = null;
-  let socket = null;
+  let live = null;
   let me = null;
   let settings = null;
   let roomInfo = null;
@@ -30,9 +35,10 @@
   let size = Number(localStorage.getItem('dil.size')) || 6;
   let nickname = localStorage.getItem('dil.nickname') || '';
 
-  let active = null;      // { id, buffer: [] } for the stroke under the pointer
-  let flushQueued = false;
+  let active = null;      // the stroke currently under the pointer
+  let flushTimer = null;
   let strokeSeq = 0;
+  let lastStrokeAt = 0;
 
   // ---------------------------------------------------------------------------
   // Gate — the blocking card for every "you can't draw right now" state
@@ -192,14 +198,14 @@
 
     $('#penBtn').addEventListener('click', () => setTool('pen'));
     $('#eraserBtn').addEventListener('click', () => setTool('eraser'));
-    $('#undoBtn').addEventListener('click', () => socket?.emit('s:undo'));
+    $('#undoBtn').addEventListener('click', () => live?.act('undo').catch(() => {}));
     $('#clearBtn').addEventListener('click', () => {
-      if (confirm('Hapus semua gambar kamu di kanvas ini?')) socket?.emit('s:clearMine');
+      if (confirm('Hapus semua gambar kamu di kanvas ini?')) live?.act('clearMine').catch(() => {});
     });
 
     document.addEventListener('keydown', (e) => {
       if (e.target.matches('input, textarea')) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); socket?.emit('s:undo'); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); live?.act('undo').catch(() => {}); }
       else if (e.key.toLowerCase() === 'e') setTool(tool === 'eraser' ? 'pen' : 'eraser');
       else if (e.key === '[') { size = Math.max(2, size - 2); $('#size').value = size; paintSizeDot(); }
       else if (e.key === ']') { size = Math.min(Number($('#size').max), size + 2); $('#size').value = size; paintSizeDot(); }
@@ -212,20 +218,55 @@
   // Drawing
   // ---------------------------------------------------------------------------
   function canDraw() {
-    return Boolean(socket?.connected && me && me.approved && settings && !settings.locked);
+    return Boolean(live?.connected && me && me.approved && settings && !settings.locked);
   }
 
-  function flush() {
-    flushQueued = false;
-    if (!active || !active.buffer.length) return;
-    socket.emit('s:pts', { id: active.id, pts: active.buffer });
-    active.buffer = [];
+  /**
+   * Drains one stroke's buffer, one request at a time.
+   *
+   * State lives on the stroke rather than in a global, so releasing the pointer
+   * can hand the tail off to the network and let the next stroke start straight
+   * away — a quick succession of taps never gets swallowed waiting for a reply.
+   */
+  async function pump(stroke) {
+    if (stroke.sending || stroke.closed) return;
+    const pending = stroke.buffer;
+    if (!pending.length && !stroke.ending) return;
+
+    stroke.buffer = [];
+    stroke.sending = true;
+    const finalise = stroke.ending && !stroke.buffer.length;
+
+    try {
+      await live.sendStroke({
+        cid: stroke.cid,
+        pts: pending,
+        color: stroke.color,
+        size: stroke.size,
+        tool: stroke.tool,
+        done: finalise,
+      });
+      if (finalise) stroke.closed = true;
+    } catch (err) {
+      if (err.data?.code === 'locked') toast('Kanvas sedang dibekukan oleh host.', 'bad');
+      else if (err.data?.code === 'pending') toast('Tunggu host menyetujui kamu dulu.', 'bad');
+      else if (err.status === 403) gateForDenial(err.data || { code: 'banned' });
+      stroke.closed = true; // don't retry forever against a refusal
+    } finally {
+      stroke.sending = false;
+      // Points that arrived mid-flight, or the closing call, go next.
+      if (!stroke.closed && (stroke.buffer.length || stroke.ending)) pump(stroke);
+    }
   }
 
-  function queueFlush() {
-    if (flushQueued) return;
-    flushQueued = true;
-    requestAnimationFrame(flush);
+  function startFlushTimer() {
+    if (flushTimer) return;
+    flushTimer = setInterval(() => { if (active) pump(active); }, FLUSH_MS);
+  }
+
+  function stopFlushTimer() {
+    clearInterval(flushTimer);
+    flushTimer = null;
   }
 
   function onDown(event) {
@@ -233,18 +274,31 @@
     if (event.button !== undefined && event.button !== 0) return;
     if (!board.isInside(event.clientX, event.clientY)) return;
 
+    const cooldown = Number(settings.cooldownMs) || 0;
+    const now = Date.now();
+    if (cooldown > 0 && now - lastStrokeAt < cooldown) {
+      toast(`Tunggu ${Math.ceil((cooldown - (now - lastStrokeAt)) / 1000)} detik lagi.`, 'bad');
+      return;
+    }
+    lastStrokeAt = now;
+
     const { x, y } = board.toNormalised(event.clientX, event.clientY);
-    const cid = `${Date.now().toString(36)}${(strokeSeq++).toString(36)}`;
+    const cid = `${now.toString(36)}${(strokeSeq++).toString(36)}`;
     // The server namespaces this with our viewer id — so we can predict the
     // final id and start painting before the round trip completes.
     const id = `${me.id}#${cid}`;
 
-    active = { id, buffer: [], lastX: x, lastY: y };
+    active = {
+      id, cid, color, size, tool,
+      buffer: [x, y], lastX: x, lastY: y,
+      sending: false, ending: false, closed: false,
+    };
     board.addStroke({
       id, viewerId: me.id, name: me.name, color, size, tool,
-      pts: [x, y], t: Date.now(), done: false,
+      pts: [x, y], t: now, done: false,
     });
-    socket.emit('s:start', { cid, x, y, color, size, tool });
+    startFlushTimer();
+    pump(active);
     board.canvas.setPointerCapture?.(event.pointerId);
     event.preventDefault();
   }
@@ -252,8 +306,12 @@
   function onMove(event) {
     if (!active) return;
 
-    // Coalesced events give us the full high-frequency path on a 120Hz screen.
-    const events = event.getCoalescedEvents ? event.getCoalescedEvents() : [event];
+    // Coalesced events give us the full high-frequency path on a 120Hz screen,
+    // but the list is empty for synthetic events and on browsers that stub the
+    // method — fall back to the event itself rather than dropping the move.
+    let events = event.getCoalescedEvents ? event.getCoalescedEvents() : null;
+    if (!events || !events.length) events = [event];
+
     for (const point of events) {
       const { x, y } = board.toNormalised(point.clientX, point.clientY);
       // Drop sub-pixel jitter: it costs bandwidth and changes nothing visually.
@@ -263,16 +321,17 @@
       active.buffer.push(x, y);
       board.appendPoints(active.id, [x, y]);
     }
-    queueFlush();
     event.preventDefault();
   }
 
   function onUp() {
     if (!active) return;
-    flush();
-    board.endStroke(active.id);
-    socket.emit('s:end', { id: active.id });
-    active = null;
+    const finishing = active;
+    active = null;                 // free the pointer for the next stroke at once
+    stopFlushTimer();
+    board.endStroke(finishing.id);
+    finishing.ending = true;
+    pump(finishing);               // tail + close call drain in the background
   }
 
   function wireCanvas() {
@@ -341,15 +400,23 @@
     }
   }
 
+  /** Applies a stroke delta from the log, skipping the echo of our own work. */
+  function applyStroke(data) {
+    if (me && data.viewerId === me.id) return; // already painted locally
+    const existing = board.index.get(data.id);
+    if (!existing) {
+      board.addStroke({ ...data, pts: data.pts.slice(), done: data.done });
+    } else {
+      board.appendPoints(data.id, data.pts);
+      if (data.done) board.endStroke(data.id);
+    }
+  }
+
   function connect() {
-    socket = io({ withCredentials: true });
+    setConn('idle', 'Bergabung…');
+    live = new LiveRoom({ roomCode, role: 'viewer', viewerId: anonId() });
 
-    socket.on('connect', () => {
-      setConn('idle', 'Bergabung…');
-      socket.emit('viewer:join', { roomCode, viewerId: anonId(), name: nickname });
-    });
-
-    socket.on('joined', (data) => {
+    live.on('joined', (data) => {
       me = data.you;
       hideGate();
       applySettings(data.settings);
@@ -365,18 +432,17 @@
       }
     });
 
-    socket.on('settings', applySettings);
-
-    socket.on('s:start', (data) => {
-      if (me && data.viewerId === me.id) return; // our own echo — already on screen
-      board.addStroke({ ...data, pts: [data.x, data.y], done: false });
+    live.on('resync', (data) => {
+      applySettings(data.settings);
+      board.setStrokes(data.strokes);
     });
-    socket.on('s:pts', (data) => board.appendPoints(data.id, data.pts));
-    socket.on('s:end', (data) => board.endStroke(data.id));
-    socket.on('remove', (data) => board.removeStrokes(data.ids));
-    socket.on('clear', () => board.clear());
 
-    socket.on('approval', ({ approved }) => {
+    live.on('settings', applySettings);
+    live.on('stroke', applyStroke);
+    live.on('remove', (data) => board.removeStrokes(data.ids));
+    live.on('clear', () => board.clear());
+
+    live.on('approval', ({ approved }) => {
       if (!me) return;
       me.approved = approved;
       if (approved) {
@@ -392,17 +458,12 @@
       }
     });
 
-    socket.on('cooldown', ({ until }) => {
-      const seconds = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-      toast(`Tunggu ${seconds} detik sebelum menggambar lagi.`, 'bad');
-    });
-
-    socket.on('denied', (data) => {
+    live.on('denied', (data) => {
       setConn('off', 'Ditolak');
       gateForDenial(data);
     });
 
-    socket.on('kicked', (data) => {
+    live.on('kicked', (data) => {
       setConn('off', 'Dikeluarkan');
       showGate({
         icon: ICONS.ban,
@@ -412,13 +473,10 @@
       });
     });
 
-    socket.on('disconnect', (reason) => {
-      onUp();
-      // An explicit kick already showed its own card; don't stomp on it.
-      if (reason !== 'io server disconnect') setConn('off', 'Terputus — menyambung ulang');
-    });
+    live.on('offline', () => setConn('off', 'Terputus — menyambung ulang'));
+    live.on('reconnected', () => setConn('live', 'Terhubung'));
 
-    socket.io.on('reconnect', () => setConn('idle', 'Bergabung…'));
+    live.start({ name: nickname });
   }
 
   // ---------------------------------------------------------------------------

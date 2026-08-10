@@ -55,13 +55,20 @@ const pool = new Pool({
         database: process.env.PGDATABASE || 'drawinglive',
       }),
   ssl: sslConfig(),
-  // Serverless Postgres bills by connection time and caps concurrent clients,
-  // so keep the pool small and let idle clients go.
-  max: Number(process.env.PGPOOL_MAX) || 8,
-  idleTimeoutMillis: 20000,
+  // On a serverless host every concurrent invocation carries its own pool, so a
+  // large `max` multiplies into hundreds of database connections. Stay tiny
+  // there and rely on the provider's connection pooler.
+  max: Number(process.env.PGPOOL_MAX) || (process.env.VERCEL ? 2 : 8),
+  idleTimeoutMillis: process.env.VERCEL ? 8000 : 20000,
   connectionTimeoutMillis: 15000,
   keepAlive: true,
 });
+
+// Neon hands out two endpoints. The direct one caps out quickly under
+// serverless fan-out; the `-pooler` one is built for it.
+if (process.env.VERCEL && /neon\.tech/.test(DATABASE_URL) && !/-pooler\./.test(DATABASE_URL)) {
+  console.warn('[db] DATABASE_URL memakai endpoint Neon langsung. Di Vercel, pakai connection string yang ada "-pooler" agar tidak kehabisan koneksi.');
+}
 
 pool.on('error', (err) => console.error('[db] idle client error:', err.message));
 
@@ -130,6 +137,62 @@ async function migrate() {
       PRIMARY KEY (user_id, channel_id)
     );
   `);
+
+  // -------------------------------------------------------------------------
+  // Live room state.
+  //
+  // On a serverless host there is no process to hold a room in memory, so the
+  // canvas, the people in it, and the change log all live here. Clients follow
+  // `room_events` by sequence number instead of a socket.
+  // -------------------------------------------------------------------------
+  await query(`
+    CREATE TABLE IF NOT EXISTS room_events (
+      seq        BIGSERIAL PRIMARY KEY,
+      room_code  TEXT NOT NULL,
+      kind       TEXT NOT NULL,
+      data       JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at BIGINT NOT NULL
+    );
+  `);
+  await query('CREATE INDEX IF NOT EXISTS idx_events_room ON room_events(room_code, seq)');
+  await query('CREATE INDEX IF NOT EXISTS idx_events_age ON room_events(created_at)');
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS strokes (
+      room_code  TEXT NOT NULL,
+      stroke_id  TEXT NOT NULL,
+      viewer_id  TEXT NOT NULL,
+      name       TEXT NOT NULL,
+      color      TEXT NOT NULL,
+      size       REAL NOT NULL,
+      tool       TEXT NOT NULL,
+      pts        JSONB NOT NULL DEFAULT '[]'::jsonb,
+      done       BOOLEAN NOT NULL DEFAULT false,
+      created_at BIGINT NOT NULL,
+      ord        BIGSERIAL,
+      PRIMARY KEY (room_code, stroke_id)
+    );
+  `);
+  await query('CREATE INDEX IF NOT EXISTS idx_strokes_room ON strokes(room_code, ord)');
+  await query('CREATE INDEX IF NOT EXISTS idx_strokes_viewer ON strokes(room_code, viewer_id, ord)');
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS room_viewers (
+      room_code  TEXT NOT NULL,
+      viewer_id  TEXT NOT NULL,
+      name       TEXT NOT NULL,
+      color      TEXT NOT NULL,
+      avatar     TEXT,
+      channel_id TEXT,
+      access_via TEXT NOT NULL DEFAULT 'public',
+      approved   BOOLEAN NOT NULL DEFAULT true,
+      banned     BOOLEAN NOT NULL DEFAULT false,
+      joined_at  BIGINT NOT NULL,
+      last_seen  BIGINT NOT NULL,
+      PRIMARY KEY (room_code, viewer_id)
+    );
+  `);
+  await query('CREATE INDEX IF NOT EXISTS idx_viewers_room ON room_viewers(room_code, last_seen)');
 }
 
 // ---------------------------------------------------------------------------

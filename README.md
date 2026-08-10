@@ -8,7 +8,8 @@ lewat **Browser Source OBS** dengan latar transparan.
   menampilkan nama & avatar channel publik. Tidak ada password yang disimpan.
 - **Kontrol akses:** setiap room bisa diatur **Publik** (siapa pun yang punya link) atau
   **Khusus member** (verifikasi membership YouTube).
-- **Tanpa Docker.** Server Node jalan langsung, database pakai Postgres cloud gratis.
+- **Jalan di Vercel.** Realtime-nya memakai long-polling di atas Postgres, jadi tidak butuh
+  WebSocket maupun server yang hidup terus. Database pakai Postgres cloud gratis (Neon/Supabase).
 
 ---
 
@@ -110,45 +111,66 @@ persyaratan domain, video demo, dan teks justifikasi scope yang siap salin-tempe
 
 ---
 
-## 4. Deploy ke Render
+## 4. Deploy ke Vercel
 
-Aplikasi ini butuh proses Node yang hidup terus (Socket.IO memakai koneksi WebSocket persisten
-dan menyimpan state kanvas di memori). Karena itu **Vercel, Netlify, dan platform serverless lain
-tidak cocok** — halamannya tampil, tapi kanvasnya tidak akan pernah tersambung.
+Repo ini sudah berisi [`vercel.json`](vercel.json) dan [`api/index.js`](api/index.js).
 
-Repo ini sudah berisi [`render.yaml`](render.yaml), jadi tinggal:
-
-1. **Render Dashboard → New → Blueprint** → pilih repo `Drawing-In-Live-Youtube`.
-2. Render membaca blueprint-nya dan meminta env var rahasia. Isi:
-   - `DATABASE_URL` — connection string Neon kamu
-   - `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET`
-   - `PUBLIC_ORIGIN` dan `OAUTH_REDIRECT_URI` — **kosongkan dulu**, diisi di langkah 4
-   - `SESSION_SECRET` dibuat otomatis oleh Render, biarkan saja
-3. Klik **Apply**, tunggu build selesai. Catat URL yang diberikan Render,
-   misalnya `https://drawing-in-live.onrender.com`.
-4. **Environment → Edit**, isi dua env var tadi dengan URL itu, lalu simpan
-   (service akan restart sendiri):
+1. **Vercel Dashboard → Add New → Project** → import repo `Drawing-In-Live-Youtube`.
+2. **Root Directory: biarkan kosong** (`./`). Framework Preset: **Other**.
+   Build Command dan Output Directory dikosongkan — semuanya diatur `vercel.json`.
+3. **Environment Variables**, isi keempat ini:
    ```env
-   PUBLIC_ORIGIN=https://drawing-in-live.onrender.com
-   OAUTH_REDIRECT_URI=https://drawing-in-live.onrender.com/auth/google/callback
+   DATABASE_URL=postgresql://...   # pakai yang ada "-pooler", lihat catatan di bawah
+   SESSION_SECRET=...              # node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
    ```
-5. **Google Cloud Console → Credentials → OAuth client** kamu, tambahkan di
+4. **Deploy**. Catat URL-nya, misal `https://drawing-in-live.vercel.app`.
+5. Tambahkan dua env var lagi, lalu **Redeploy**:
+   ```env
+   PUBLIC_ORIGIN=https://drawing-in-live.vercel.app
+   OAUTH_REDIRECT_URI=https://drawing-in-live.vercel.app/auth/google/callback
+   ```
+6. **Google Cloud Console → Credentials → OAuth client** kamu, tambahkan di
    *Authorized redirect URIs*:
    ```
-   https://drawing-in-live.onrender.com/auth/google/callback
+   https://drawing-in-live.vercel.app/auth/google/callback
    ```
    Biarkan `http://localhost:3000/auth/google/callback` tetap ada supaya development lokal jalan.
 
-Setelah itu buka URL Render-nya dan login seperti biasa.
+### Dua hal yang wajib benar
 
-### Catatan free tier
+**Region.** `vercel.json` mengunci fungsi ke `sin1` (Singapura) agar sedekat mungkin dengan
+database Neon di `ap-southeast-1`. Kalau database kamu di region lain, ganti `regions` di
+`vercel.json` — kalau fungsi dan database beda benua, tiap query menyeberang samudra dan
+kanvasnya terasa berat. Di paket Hobby, region juga bisa diatur lewat
+*Project Settings → Functions → Function Region*.
 
-- Service **tidur setelah 15 menit tanpa trafik**, dan butuh ~50 detik untuk bangun.
-  Selama siaran berlangsung, koneksi WebSocket dari OBS dan penonton dihitung sebagai trafik,
-  jadi tidak akan tidur di tengah jalan. **Buka overlay 1 menit sebelum mulai siaran** supaya
-  sudah panas saat dibutuhkan.
-- Overlay dan halaman menggambar otomatis menyambung ulang kalau koneksi sempat putus.
-- Push ke branch `main` memicu deploy ulang otomatis.
+**Connection string.** Pakai endpoint Neon yang mengandung `-pooler`. Setiap invocation
+serverless membuka koneksinya sendiri, dan endpoint langsung akan cepat kehabisan slot.
+Server akan memperingatkan di log kalau ini keliru.
+
+### Batas paket Hobby
+
+Transport realtime memakai long-polling: satu request ditahan sampai ~20 detik, lalu client
+bertanya lagi. Saat kanvas sepi, itu sekitar **3 request per menit per penonton**; saat ramai
+menggambar, request kembali lebih cepat.
+
+Kira-kira satu siaran 3 jam dengan 10 penonton aktif menghabiskan 30–60 ribu invocation,
+sementara paket Hobby memberi 1 juta per bulan. Cukup untuk belasan siaran. Kalau channel
+kamu tumbuh besar, pindah ke host dengan proses persisten akan jauh lebih murah —
+[`render.yaml`](render.yaml) sudah disiapkan untuk itu dan kodenya jalan apa adanya.
+
+---
+
+## 4b. Alternatif: Render
+
+Kode yang sama juga jalan di Render tanpa perubahan, dan di sana long-polling lebih hemat
+karena tidak dihitung per-invocation. Repo berisi [`render.yaml`](render.yaml):
+**New → Blueprint** → pilih repo → isi env var yang diminta → Apply.
+
+Catatan free tier Render: service tidur setelah 15 menit tanpa trafik dan butuh ~50 detik
+untuk bangun. Buka overlay 1 menit sebelum siaran supaya sudah panas.
 
 ---
 
@@ -216,36 +238,50 @@ Semua ada di dashboard dan berlaku seketika ke semua penonton + overlay:
 
 ```
 server/
-  index.js       HTTP routes, OAuth callback, REST API, boot & graceful shutdown
-  db.js          Pool Postgres (+ auto-SSL untuk host cloud), migrasi skema, semua query
+  app.js         Express app: routes, OAuth, REST API, versi aset  ← dipakai lokal & Vercel
+  index.js       entry lokal: buka port, tunggu DB, graceful shutdown
+  db.js          Pool Postgres (+ auto-SSL), migrasi skema, semua query
   auth.js        cookie sesi (JWT), identitas viewer, state OAuth
   google.js      OAuth 2.0 + YouTube Data API (fetch, tanpa SDK)
   membership.js  gerbang publik/member + cache daftar member
-  rooms.js       state kanvas in-memory + semua event Socket.IO
+  live.js        transport realtime: event log + long-polling
+api/index.js     entry Vercel (mengekspor app.js)
 views/           halaman HTML
 public/          css, js klien, gambar (dilayani di /static)
 test/smoke.js    smoke test end-to-end
-Dockerfile       opsional, untuk deploy ke host yang minta container
 ```
 
-**Kanvas tidak pernah ditulis ke disk.** Semua goresan hidup di memori server, dikirim dengan
-koordinat ternormalisasi `0..1` supaya penonton, dashboard, dan overlay bisa merender ukuran
-berapa pun dari data yang sama. Database hanya menyimpan akun creator, setelan room, dan
-daftar member manual — jadi beban ke database cloud sangat kecil (hanya saat login dan simpan
-setelan, bukan saat menggambar).
+### Cara realtime-nya bekerja
 
-### Batas bawaan (di `server/rooms.js`)
+Tidak ada WebSocket, jadi tidak butuh proses yang hidup terus. Setiap perubahan jadi satu baris
+di tabel `room_events`, dan klien mengikutinya lewat nomor urut:
+
+```
+penonton  ──POST /stroke──▶  strokes + room_events  ◀──GET /poll (ditahan ~20 dtk)──  overlay OBS
+                                     (Postgres)                                        dashboard
+                                                                                       penonton lain
+```
+
+Request `poll` ditahan sampai ada event baru, lalu langsung balas. Kalau 20 detik tidak terjadi
+apa-apa, ia balas kosong dan klien bertanya lagi. Klien yang tertinggal terlalu jauh dari
+riwayat akan otomatis diberi snapshot penuh, bukan potongan stream yang bolong.
+
+Latensi terukur di mesin lokal terhadap Neon Singapura: **median 209 ms, terburuk 273 ms**,
+ditambah pengelompokan titik 200 ms di sisi penonton. Siaran itu sendiri tertunda beberapa
+detik, jadi penonton tidak akan merasakan selisih ini.
+
+Koordinat goresan dikirim ternormalisasi `0..1`, sehingga penonton, dashboard, dan overlay bisa
+merender ukuran berapa pun dari data yang sama.
+
+### Batas bawaan (di `server/live.js`)
 
 | Konstanta | Nilai | Alasan |
 | --- | --- | --- |
-| `MAX_STROKES_PER_ROOM` | 1500 | goresan terlama dibuang otomatis, menjaga FPS overlay |
+| `MAX_STROKES_PER_ROOM` | 1200 | goresan terlama dibuang otomatis, menjaga FPS overlay |
 | `MAX_POINTS_PER_STROKE` | 1200 | satu goresan tidak bisa dibikin tak terhingga |
-| `MAX_POINTS_PER_SECOND` | 400 | rate limit per koneksi |
-| `IDLE_ROOM_TTL_MS` | 6 jam | room kosong dibersihkan dari memori |
-
-> Karena state kanvas ada di memori satu proses, aplikasi ini dirancang untuk jalan sebagai
-> **satu instance**. Kalau nanti mau di-scale ke banyak instance, butuh Socket.IO adapter
-> (Redis) supaya event tersebar antar proses.
+| `MAX_POINTS_PER_BATCH` | 600 | batas ukuran satu request |
+| `EVENT_RETENTION_MS` | 3 menit | seberapa jauh klien boleh tertinggal sebelum di-resync |
+| `HOLD_MS` | 20 detik | lama satu request poll ditahan |
 
 ---
 
