@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google OAuth belum dikonfigurasi — Drawing In Live</title>
+<link rel="icon" href="/static/img/favicon.svg">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body class="centered">
+<div class="bg-layers"></div>
+<div class="grain"></div>
+<div class="scanlines"></div>
+
+<main class="doc">
+  <a class="brand" href="/" style="font-size:1rem"><span class="tally-dot"></span> Drawing&nbsp;In&nbsp;Live</a>
+
+  <section class="panel panel--hot" style="margin-top:1.4rem">
+    <p class="eyebrow">Konfigurasi server</p>
+    <h1 class="auth-title">Login Google belum aktif.</h1>
+    <p class="muted" style="font-size:0.85rem;margin-top:0.9rem">
+      Server ini belum punya kredensial OAuth, jadi tombol login tidak bisa dipakai.
+      Setelnya sekali saja:
+    </p>
+
+    <h2>1 — Bikin OAuth client</h2>
+    <ul>
+      <li>Buka <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console → Credentials</a>.</li>
+      <li>Aktifkan <strong>YouTube Data API v3</strong> di menu <em>Enabled APIs &amp; services</em>.</li>
+      <li><strong>Create credentials → OAuth client ID → Web application</strong>.</li>
+      <li>Di <em>Authorized redirect URIs</em>, isi persis: <code>http://localhost:3000/auth/google/callback</code></li>
+    </ul>
+
+    <h2>2 — Isi file .env</h2>
+    <ul>
+      <li><code>GOOGLE_CLIENT_ID=…</code></li>
+      <li><code>GOOGLE_CLIENT_SECRET=…</code></li>
+      <li><code>OAUTH_REDIRECT_URI=http://localhost:3000/auth/google/callback</code></li>
+    </ul>
+
+    <h2>3 — Jalankan ulang</h2>
+    <p><code>docker compose up -d --build</code></p>
+
+    <p class="tiny muted" style="margin-top:1.4rem">
+      Selama aplikasi masih berstatus <em>Testing</em> di Google, hanya akun yang kamu daftarkan
+      sebagai <strong>Test user</strong> di OAuth consent screen yang bisa login.
+      Panduan lengkap ada di <code>README.md</code>.
+    </p>
+
+    <hr class="hr">
+    <a class="btn btn--sm" href="/">← Kembali</a>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gabung room — Drawing In Live</title>
+<link rel="icon" href="/static/img/favicon.svg">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body class="centered">
+<div class="bg-layers"></div>
+<div class="grain"></div>
+<div class="scanlines"></div>
+
+<main class="auth-wrap">
+  <a class="brand reveal d1" href="/" style="justify-content:center;font-size:1.05rem">
+    <span class="tally-dot"></span> Drawing&nbsp;In&nbsp;Live
+  </a>
+
+  <section class="panel join-card reveal d2">
+    <p class="eyebrow">Untuk penonton</p>
+    <h1 class="auth-title">Masukkan kode room.</h1>
+    <p class="muted" style="font-size:0.85rem;margin-top:0.9rem">
+      Kode 6 huruf yang dibagikan host di chat atau di layar streaming.
+    </p>
+
+    <form id="joinForm" style="margin-top:1.5rem">
+      <label class="field">
+        <span class="label">Kode room</span>
+        <input class="code-input" id="code" name="code" maxlength="6" autocomplete="off"
+               autocapitalize="characters" spellcheck="false" placeholder="ABC123" required>
+      </label>
+      <div id="lookup" class="hidden" style="margin-top:0.9rem"></div>
+      <button class="btn btn--primary btn--block" type="submit" style="margin-top:1.2rem">Gabung →</button>
+    </form>
+
+    <hr class="hr hr--dash">
+    <p class="tiny muted">
+      Punya link langsung dari host? Buka saja link-nya, kode akan terisi otomatis.
+    </p>
+  </section>
+
+  <p class="tiny muted reveal d3" style="text-align:center;margin-top:1.4rem">
+    Kamu YouTuber? <a href="/login">Buat room sendiri →</a>
+  </p>
+  <p class="tiny muted reveal d3" style="text-align:center;margin-top:0.6rem">
+    <a href="/privacy">Kebijakan privasi</a> · <a href="/terms">Syarat &amp; ketentuan</a>
+  </p>
+</main>
+
+<script src="/static/js/ui.js"></script>
+<script>
+(function () {
+  const { $, api, toast } = UI;
+  const input = $('#code');
+  const lookup = $('#lookup');
+
+  // Deep link support: /join?code=ABC123
+  const preset = new URLSearchParams(location.search).get('code');
+  if (preset) input.value = preset.toUpperCase().slice(0, 6);
+  input.focus();
+
+  input.addEventListener('input', () => {
+    input.value = input.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 6);
+    if (input.value.length === 6) peek(input.value);
+    else lookup.classList.add('hidden');
+  });
+
+  let lastPeek = '';
+  async function peek(code) {
+    if (code === lastPeek) return;
+    lastPeek = code;
+    try {
+      const room = await api(`/api/room/${code}`);
+      lookup.className = 'host-strip';
+      lookup.innerHTML = '';
+
+      const img = document.createElement('img');
+      img.className = 'avatar';
+      img.alt = '';
+      img.src = room.channelAvatar || '/static/img/avatar-fallback.svg';
+      img.onerror = () => { img.src = '/static/img/avatar-fallback.svg'; };
+
+      const box = document.createElement('div');
+      box.className = 'grow';
+      const name = document.createElement('div');
+      name.className = 'host-name';
+      name.textContent = room.channelTitle;
+      const mode = document.createElement('div');
+      mode.className = 'tiny muted';
+      mode.textContent = room.accessMode === 'members' ? 'Khusus member channel' : 'Terbuka untuk semua';
+      box.append(name, mode);
+
+      const badge = document.createElement('span');
+      badge.className = room.accessMode === 'members' ? 'badge badge--warn' : 'badge badge--ok';
+      badge.textContent = room.accessMode === 'members' ? 'Member' : 'Publik';
+
+      lookup.append(img, box, badge);
+    } catch (err) {
+      lookup.className = 'notice notice--bad';
+      lookup.textContent = err.status === 404 ? 'Room dengan kode itu tidak ada.' : 'Gagal mengecek room.';
+    }
+  }
+
+  if (input.value.length === 6) peek(input.value);
+
+  $('#joinForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = input.value.trim();
+    if (code.length !== 6) return toast('Kode room harus 6 karakter.', 'bad');
+    location.href = `/draw/${code}`;
+  });
+})();
+</script>
+</body>
+</html>

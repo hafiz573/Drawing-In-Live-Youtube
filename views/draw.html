@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Menggambar — Drawing In Live</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/static/img/favicon.svg">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/auth.css">
+<link rel="stylesheet" href="/static/css/draw.css">
+</head>
+<body class="draw">
+<div class="bg-layers"></div>
+
+<header class="draw-top">
+  <div class="host grow">
+    <img class="avatar avatar--sm" id="hostAvatar" src="/static/img/avatar-fallback.svg" alt="">
+    <div style="min-width:0">
+      <div class="host-name" id="hostName">Menghubungkan…</div>
+      <div class="host-sub" id="hostSub">room <span id="roomCode"></span></div>
+    </div>
+  </div>
+
+  <span class="badge hidden" id="modeBadge"></span>
+  <span class="conn" id="conn" data-state="idle"><span>Menghubungkan</span></span>
+  <a class="btn btn--sm" href="/join">Keluar</a>
+</header>
+
+<div class="stage" id="stage">
+  <canvas id="board" aria-label="Kanvas gambar bersama"></canvas>
+  <div class="stage-frame hidden" id="frame" data-label="Area yang tampil di layar host"></div>
+</div>
+
+<div class="toolbar" id="toolbar">
+  <div class="swatches" id="swatches" role="group" aria-label="Warna kuas"></div>
+
+  <div class="sep"></div>
+
+  <div class="size-group">
+    <span class="size-dot" id="sizeDot" style="width:8px;height:8px;color:var(--paper-dim)"></span>
+    <input type="range" id="size" min="2" max="28" value="6" aria-label="Ukuran kuas">
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="tool-group">
+    <button class="tool" id="penBtn" aria-pressed="true" title="Pena" aria-label="Pena">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z"/><path d="m14 6 4 4"/></svg>
+    </button>
+    <button class="tool" id="eraserBtn" aria-pressed="false" title="Penghapus" aria-label="Penghapus">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 20H21"/><path d="m4 16.5 5.5 5.5 10-10-5.5-5.5a2 2 0 0 0-2.8 0L4 13.7a2 2 0 0 0 0 2.8Z"/></svg>
+    </button>
+    <button class="tool" id="undoBtn" title="Batal goresan terakhir" aria-label="Batal goresan terakhir">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a5 5 0 0 1 0 10H8"/><path d="m3 8 4-4M3 8l4 4"/></svg>
+    </button>
+    <button class="tool" id="clearBtn" title="Hapus semua gambarku" aria-label="Hapus semua gambarku">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7v13h12V7"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Blocking states: needs login, not a member, awaiting approval, kicked, frozen. -->
+<div class="gate hidden" id="gate">
+  <section class="panel panel--hot gate-card">
+    <div class="gate-icon" id="gateIcon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 8v5"/><circle cx="12" cy="16.5" r=".6" fill="currentColor"/><path d="M10.3 3.9 2.6 17.2A1.6 1.6 0 0 0 4 19.6h16a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z"/></svg>
+    </div>
+    <h2 id="gateTitle">Tunggu sebentar</h2>
+    <p id="gateBody">Mengecek akses kamu…</p>
+    <div class="row" id="gateActions" style="justify-content:center;margin-top:1.5rem"></div>
+  </section>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/board.js"></script>
+<script src="/static/js/draw.js"></script>
+</body>
+</html>

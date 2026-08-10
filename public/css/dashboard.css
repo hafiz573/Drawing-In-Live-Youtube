@@ -1,0 +1,114 @@
+/* Creator control room. */
+
+.dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  padding: clamp(1.2rem, 3vh, 2.2rem) var(--gutter) 4rem;
+  width: min(1400px, 100%);
+  margin-inline: auto;
+}
+.dash > .col { display: grid; gap: 1.25rem; align-content: start; min-width: 0; }
+
+/* --- identity strip -------------------------------------------------------- */
+.who { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+.who-name { font-family: var(--display); font-weight: 700; font-size: 0.95rem; letter-spacing: -0.01em; }
+.who-sub { font-size: 0.68rem; color: var(--paper-mute); letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* --- live preview ---------------------------------------------------------- */
+.preview-frame {
+  position: relative;
+  aspect-ratio: var(--canvas-ratio, 16 / 9);
+  background-color: #0d0c0b;
+  background-image:
+    linear-gradient(45deg, #16130f 25%, transparent 25%, transparent 75%, #16130f 75%),
+    linear-gradient(45deg, #16130f 25%, transparent 25%, transparent 75%, #16130f 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  border: 1px solid var(--line-hot);
+  overflow: hidden;
+}
+.preview-frame canvas { position: absolute; inset: 0; display: block; }
+
+.preview-empty {
+  position: absolute; inset: 0; display: grid; place-content: center; gap: 0.4rem;
+  text-align: center; pointer-events: none; color: var(--paper-mute);
+}
+
+.control-bar { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.9rem; }
+
+/* --- link cards ------------------------------------------------------------ */
+.linkset { display: grid; gap: 1.1rem; }
+.link-row .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.4rem; }
+
+.roomcode {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(1.8rem, 5vw, 2.6rem); letter-spacing: 0.16em;
+  color: var(--amber); line-height: 1;
+}
+
+/* --- settings grid --------------------------------------------------------- */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+.setting-block + .setting-block { margin-top: 1.15rem; padding-top: 1.15rem; border-top: 1px dashed var(--line); }
+
+.save-bar {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  margin: 1.2rem -1.9rem -1.9rem; padding: 0.8rem 1.9rem;
+  background: rgb(21 18 15 / 0.95); border-top: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+}
+
+/* --- members --------------------------------------------------------------- */
+.member-status {
+  display: flex; align-items: flex-start; gap: 0.7rem;
+  padding: 0.75rem 0.85rem; border: 1px solid var(--line); background: var(--ink-2);
+  font-size: 0.78rem; line-height: 1.6; color: var(--paper-dim);
+}
+.member-status .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 0.42rem; flex: none; background: var(--paper-mute); }
+.member-status.ok .dot { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+.member-status.warn .dot { background: var(--amber); }
+.member-status.bad .dot { background: var(--tally); }
+
+.allow-list { list-style: none; margin: 0.8rem 0 0; padding: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.allow-list:empty { display: none; }
+.allow-list li {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.5rem 0.65rem; background: var(--ink-2); font-size: 0.76rem;
+}
+.allow-list .cid { font-size: 0.68rem; color: var(--paper-mute); word-break: break-all; }
+
+/* --- viewers --------------------------------------------------------------- */
+.viewer-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; background: var(--line); }
+.viewer-list li {
+  display: flex; align-items: center; gap: 0.65rem;
+  padding: 0.6rem 0.15rem; background: var(--panel);
+}
+.viewer-list .vname { font-size: 0.82rem; display: flex; align-items: center; gap: 0.35rem; }
+.viewer-list .vmeta { font-size: 0.66rem; color: var(--paper-mute); letter-spacing: 0.04em; }
+.viewer-list .swatch-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.5); }
+.viewer-list .offline { opacity: 0.45; }
+.viewer-actions { display: flex; gap: 0.3rem; margin-left: auto; flex: none; }
+
+.check {
+  display: inline-grid; place-items: center; width: 13px; height: 13px; flex: none;
+  border-radius: 50%; background: rgb(77 226 194 / 0.16); color: var(--mint);
+  font-size: 8px; line-height: 1;
+}
+
+.empty-note { text-align: center; padding: 1.8rem 0.5rem; color: var(--paper-mute); font-size: 0.78rem; line-height: 1.7; }
+
+/* --- misc ------------------------------------------------------------------ */
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.stat { background: var(--ink-2); padding: 0.7rem 0.8rem; }
+.stat .n { font-family: var(--display); font-weight: 800; font-size: 1.5rem; line-height: 1; }
+.stat .k { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--paper-mute); margin-top: 0.3rem; }
+
+@media (max-width: 1080px) {
+  .dash { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .save-bar { margin-inline: -1.1rem; padding-inline: 1.1rem; }
+}

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kebijakan Privasi — Drawing In Live</title>
+<meta name="description" content="Kebijakan privasi Drawing In Live: scope Google yang diminta, data yang disimpan, dan cara menghapusnya.">
+<link rel="icon" href="/static/img/favicon.svg">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body class="centered">
+<div class="bg-layers"></div>
+<div class="grain"></div>
+<div class="scanlines"></div>
+
+<main class="doc">
+  <a class="brand" href="/" style="font-size:1rem"><span class="tally-dot"></span> Drawing&nbsp;In&nbsp;Live</a>
+
+  <section class="panel" style="margin-top:1.4rem">
+    <p class="eyebrow">Kebijakan privasi &amp; izin OAuth</p>
+    <h1 class="auth-title" style="margin-bottom:0.8rem">Apa yang kami minta,<br>dan apa yang tidak.</h1>
+    <p class="tiny muted">Berlaku sejak 10 Agustus 2026. Berlaku untuk aplikasi <strong>Drawing In Live</strong>.</p>
+
+    <h2>Ringkasnya</h2>
+    <p>
+      Hanya meminta akses <strong class="mint">Read-Only</strong> (<code>youtube.readonly</code>)
+      untuk menampilkan nama &amp; avatar YouTube publik.
+      Kami <strong>tidak menyimpan data pribadi atau password</strong>.
+    </p>
+
+    <h2>Scope yang diminta dan alasannya</h2>
+    <ul>
+      <li>
+        <code>openid</code>, <code>userinfo.email</code>, <code>userinfo.profile</code> —
+        identitas dasar Google. Dipakai untuk mengenali akunmu saat login ulang, supaya kamu
+        kembali ke room yang sama, bukan room baru.
+      </li>
+      <li>
+        <code>youtube.readonly</code> —
+        dipakai <strong>hanya</strong> untuk memanggil <code>channels.list?mine=true</code> satu kali
+        saat login, guna membaca <em>judul dan foto profil channel publik</em> milikmu. Nama dan avatar
+        itu ditampilkan di dashboardmu dan di halaman menggambar, supaya penonton yakin sedang
+        menggambar di room channel yang benar. Scope ini <strong>tidak bisa</strong> mengubah,
+        mengunggah, menghapus, atau membaca video, komentar, analytics, maupun daftar langganan.
+      </li>
+      <li>
+        <code>youtube.channel-memberships.creator</code> — <strong>opsional</strong>.
+        Hanya diminta lewat layar persetujuan terpisah, dan hanya kalau kamu sendiri
+        mengaktifkan mode "khusus member". Dipakai untuk memanggil <code>members.list</code>
+        agar kami bisa mengecek apakah seorang penonton berhak menggambar di roommu.
+        Daftar member tidak pernah ditampilkan, diekspor, atau dibagikan — hanya dicocokkan
+        di memori, lalu di-cache maksimal 5 menit.
+      </li>
+    </ul>
+
+    <h2>Penggunaan Terbatas (Limited Use)</h2>
+    <p>
+      Penggunaan dan pengalihan informasi yang diterima Drawing In Live dari Google API akan
+      mematuhi
+      <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Kebijakan Data Pengguna Layanan Google API</a>,
+      termasuk persyaratan <strong>Limited Use</strong>. Secara konkret: data Google yang kami terima
+      tidak dijual, tidak dipakai untuk iklan, tidak dipakai melatih model AI, dan tidak dibaca
+      manusia kecuali jika kamu memintanya secara eksplisit untuk dukungan teknis, demi keamanan,
+      atau karena diwajibkan hukum.
+    </p>
+
+    <h2>Yang kami simpan</h2>
+    <ul>
+      <li><strong>Untuk YouTuber:</strong> ID akun Google, alamat email, nama &amp; avatar channel publik,
+        kode room, token overlay, dan setelan room kamu.</li>
+      <li><strong>Untuk penonton:</strong> tidak ada baris database sama sekali. Identitas penonton hanya
+        tersimpan di cookie bertanda tangan di browser mereka sendiri, dan kedaluwarsa otomatis
+        dalam 30 hari.</li>
+      <li><strong>Gambar:</strong> hanya ada di memori server selama sesi berlangsung. Tidak pernah ditulis
+        ke disk, dan hilang saat room dibersihkan atau server dimulai ulang.</li>
+      <li><strong>Password:</strong> tidak pernah ada. Autentikasi sepenuhnya ditangani Google.</li>
+    </ul>
+
+    <h2>Yang tidak kami lakukan</h2>
+    <ul>
+      <li>Tidak menjual atau menyewakan data siapa pun ke pihak ketiga.</li>
+      <li>Tidak memakai data Google untuk iklan atau profiling.</li>
+      <li>Tidak membagikan data Google ke layanan analytics atau pihak ketiga mana pun.</li>
+      <li>Tidak menyimpan daftar member, riwayat tontonan, atau data analytics channel.</li>
+    </ul>
+
+    <h2>Berbagi data</h2>
+    <p>
+      Satu-satunya pihak ketiga yang terlibat adalah penyedia hosting dan penyedia database
+      Postgres tempat instance ini dijalankan, sebatas untuk menyimpan data akun yang disebut di atas.
+      Data dapat diungkapkan jika diwajibkan hukum yang berlaku.
+    </p>
+
+    <h2>Token</h2>
+    <p>
+      Access token Google hanya dipakai sesaat dalam memori dan tidak disimpan. Refresh token hanya
+      disimpan kalau kamu mengaktifkan cek member otomatis, dan dipakai semata-mata untuk memanggil
+      <code>members.list</code>. Token itu terhapus sendiri begitu Google menolaknya, dan kamu bisa
+      mencabutnya kapan saja lewat
+      <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">izin akun Google</a>.
+    </p>
+
+    <h2>Menghapus data</h2>
+    <p>
+      Mencabut izin di Akun Google akan langsung memutus akses aplikasi. Untuk menghapus baris akunmu
+      sepenuhnya beserta setelan room dan daftar member manual, kirim permintaan ke
+      <a href="mailto:niftyeducate@gmail.com">niftyeducate@gmail.com</a> dari alamat email yang
+      terhubung dengan akunmu; permintaan diproses paling lambat 30 hari. Pada instance yang kamu
+      jalankan sendiri, cukup hapus barisnya dari tabel <code>users</code> di database Postgres kamu.
+    </p>
+
+    <h2>Keamanan</h2>
+    <p>
+      Koneksi ke server dan ke database memakai TLS. Cookie sesi bersifat <code>httpOnly</code>,
+      <code>SameSite=Lax</code>, dan <code>Secure</code> di lingkungan produksi. URL overlay bersifat
+      rahasia dan bisa kamu putar ulang kapan saja dari dashboard.
+    </p>
+
+    <h2>Instance mandiri</h2>
+    <p>
+      Drawing In Live dirancang untuk dijalankan sendiri (self-hosted), dengan database Postgres
+      milik kamu sendiri. Kalau kamu memakai instance milik orang lain, kebijakan sebenarnya
+      ditentukan oleh operator instance tersebut — halaman ini menjelaskan perilaku bawaan
+      perangkat lunaknya.
+    </p>
+
+    <h2>Kontak</h2>
+    <p>
+      Pertanyaan soal privasi: <a href="mailto:niftyeducate@gmail.com">niftyeducate@gmail.com</a>.
+    </p>
+
+    <hr class="hr">
+    <div class="row">
+      <a class="btn btn--sm" href="/">← Kembali</a>
+      <a class="btn btn--sm" href="/terms">Syarat &amp; ketentuan</a>
+    </div>
+  </section>
+</main>
+</body>
+</html>

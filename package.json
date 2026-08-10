@@ -1,0 +1,27 @@
+{
+  "name": "drawing-in-live",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Realtime collaborative drawing for live streamers — viewers draw, it shows up on the YouTuber's screen through an OBS browser source.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node test/smoke.js"
+  },
+  "dependencies": {
+    "cookie": "^0.6.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "socket.io": "^4.8.1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3"
+  }
+}

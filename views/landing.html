@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drawing In Live — penonton menggambar, langsung tampil di layar streaming</title>
+<meta name="description" content="Penonton menggambar lewat browser, hasilnya muncul real-time di OBS kamu sebagai Browser Source. Login Google read-only, bisa dibuka untuk publik atau khusus member.">
+<link rel="icon" href="/static/img/favicon.svg">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/landing.css">
+</head>
+<body>
+<div class="bg-layers"></div>
+<div class="grain"></div>
+<div class="scanlines"></div>
+
+<header class="topbar">
+  <a class="brand" href="/"><span class="tally-dot"></span> Drawing&nbsp;In&nbsp;Live</a>
+  <nav class="row-tight">
+    <a class="btn btn--sm" href="#cara-kerja">Cara kerja</a>
+    <a class="btn btn--sm" href="/join">Gabung room</a>
+    <a class="btn btn--sm btn--primary" href="/login">Masuk sebagai YouTuber</a>
+  </nav>
+</header>
+
+<main>
+  <!-- ================= HERO ================= -->
+  <section class="hero shell">
+    <div class="hero-copy">
+      <p class="eyebrow reveal d1"><span class="hot">●</span> On air · interactive canvas</p>
+      <h1 class="display reveal d2">
+        Penonton<br>
+        <span class="outline">menggambar.</span><br>
+        Kamu <span class="hot">siaran.</span>
+      </h1>
+      <p class="lead reveal d3" style="margin-top:1.6rem">
+        Bagikan satu link ke chat. Penonton corat-coret dari HP atau laptop mereka,
+        dan setiap goresan muncul <strong>saat itu juga</strong> di layar streaming kamu —
+        lewat Browser Source OBS, dengan latar transparan.
+      </p>
+      <div class="row reveal d4" style="margin-top:2rem">
+        <a class="btn btn--google" href="/login">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.2 5.6c4.2-3.9 6.6-9.6 6.6-16.4z"/><path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.4s.3-3 .8-4.4l-7.8-6.1C1 17 0 20.4 0 24s1 7 2.6 10.2l7.8-5.5z"/><path fill="#34A853" d="M24 48c6.2 0 11.5-2 15.3-5.5l-7.2-5.6c-2 1.4-4.6 2.2-8.1 2.2-6.4 0-11.7-3.7-13.6-9.1l-7.8 5.5C6.5 42.6 14.6 48 24 48z"/></svg>
+          Mulai dengan akun Google
+        </a>
+        <a class="btn" href="/join">Saya penonton →</a>
+      </div>
+      <p class="tiny muted reveal d5" style="margin-top:1.1rem">
+        Gratis dipakai · Tanpa install plugin · Hanya butuh Browser Source di OBS
+      </p>
+    </div>
+
+    <!-- live demo rig -->
+    <figure class="rig reveal d3">
+      <div class="rig-bar">
+        <span class="badge badge--live"><span class="tally-dot" style="width:6px;height:6px"></span> Live</span>
+        <span class="tiny muted">browser source · 1280×720 · transparan</span>
+      </div>
+      <div class="rig-screen" id="demoScreen">
+        <canvas id="demoCanvas"></canvas>
+        <div class="rig-ghost">
+          <span class="eyebrow">Preview overlay</span>
+        </div>
+      </div>
+      <figcaption class="rig-foot tiny">
+        <span><span class="mint">●</span> 4 penonton menggambar</span>
+        <span class="muted">latensi ±60 ms</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= MARQUEE ================= -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>Gambar bareng chat</span><span class="hot">✳</span>
+      <span>Tebak gambar</span><span class="hot">✳</span>
+      <span>Coretan member</span><span class="hot">✳</span>
+      <span>Reaksi live</span><span class="hot">✳</span>
+      <span>Doodle challenge</span><span class="hot">✳</span>
+      <span>Gambar bareng chat</span><span class="hot">✳</span>
+      <span>Tebak gambar</span><span class="hot">✳</span>
+      <span>Coretan member</span><span class="hot">✳</span>
+      <span>Reaksi live</span><span class="hot">✳</span>
+      <span>Doodle challenge</span><span class="hot">✳</span>
+    </div>
+  </div>
+
+  <!-- ================= CARA KERJA ================= -->
+  <section class="shell section" id="cara-kerja">
+    <header class="section-head">
+      <p class="eyebrow">01 — Setup</p>
+      <h2 class="section-title">Tiga langkah,<br>sekali seumur hidup.</h2>
+    </header>
+
+    <ol class="steps">
+      <li class="panel step">
+        <span class="step-num">01</span>
+        <h3>Login pakai Google</h3>
+        <p class="muted">Kami ambil nama &amp; foto channel YouTube publik kamu untuk ditampilkan di room. Read-only, tanpa password.</p>
+      </li>
+      <li class="panel step">
+        <span class="step-num">02</span>
+        <h3>Tempel URL overlay ke OBS</h3>
+        <p class="muted">Dashboard kasih satu URL rahasia. Masukkan ke <em>Browser Source</em>, centang transparan, selesai.</p>
+      </li>
+      <li class="panel step">
+        <span class="step-num">03</span>
+        <h3>Sebar link gambar ke chat</h3>
+        <p class="muted">Penonton buka link, langsung bisa corat-coret. Kamu pegang kendali: bekukan, hapus, tendang, blokir.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ================= OBS ================= -->
+  <section class="shell section split">
+    <div>
+      <p class="eyebrow">02 — Overlay</p>
+      <h2 class="section-title">Masuk ke scene kamu<br>sebagai <span class="hot">Browser Source.</span></h2>
+      <p class="lead" style="margin-top:1.4rem">
+        Overlay-nya latar transparan penuh, jadi coretan penonton melayang di atas gameplay,
+        facecam, atau apa pun yang lagi kamu siarkan. Tidak ada watermark, tidak ada bar aneh.
+      </p>
+      <ul class="ticks">
+        <li>Resolusi mengikuti setelan kanvas kamu (default 1280×720)</li>
+        <li>URL overlay bersifat rahasia — bisa diganti kapan saja kalau bocor</li>
+        <li>Auto-reconnect kalau koneksi OBS sempat putus</li>
+        <li>Opsi coretan memudar otomatis biar layar tidak penuh</li>
+      </ul>
+    </div>
+
+    <div class="obs-card panel panel--hot">
+      <div class="panel-head">
+        <span class="panel-title">Properties · Browser</span>
+        <span class="badge badge--live">OBS</span>
+      </div>
+      <label class="field" style="margin-bottom:0.9rem">
+        <span class="label">URL</span>
+        <div class="copybox">
+          <input class="grow" readonly value="https://drawinglive.app/overlay/••••••••••••••••" aria-label="Contoh URL overlay">
+        </div>
+      </label>
+      <div class="obs-grid">
+        <label class="field"><span class="label">Width</span><input type="text" readonly value="1280"></label>
+        <label class="field"><span class="label">Height</span><input type="text" readonly value="720"></label>
+      </div>
+      <label class="toggle" style="margin-top:0.6rem">
+        <input type="checkbox" checked disabled><span class="track"></span>
+        <span class="toggle-text"><strong>Shutdown source when not visible</strong><span>Hemat CPU saat scene lain aktif</span></span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" checked disabled><span class="track"></span>
+        <span class="toggle-text"><strong>Refresh browser when scene becomes active</strong><span>Selalu ambil kanvas terbaru</span></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- ================= AKSES ================= -->
+  <section class="shell section">
+    <header class="section-head">
+      <p class="eyebrow">03 — Kontrol akses</p>
+      <h2 class="section-title">Buka untuk semua,<br>atau khusus member.</h2>
+    </header>
+
+    <div class="access-grid">
+      <article class="panel access">
+        <span class="badge">Mode publik</span>
+        <h3>Siapa pun yang punya link</h3>
+        <p class="muted">Penonton tinggal isi nama panggilan dan langsung menggambar. Cocok buat stream terbuka, event, atau kolaborasi ramai-ramai.</p>
+        <ul class="ticks">
+          <li>Tanpa login sama sekali</li>
+          <li>Anti-spam: cooldown, batas stroke, batas ukuran kuas</li>
+          <li>Mode moderasi: setujui dulu sebelum boleh menggambar</li>
+        </ul>
+      </article>
+
+      <article class="panel access access--hot">
+        <span class="badge badge--live">Mode member</span>
+        <h3>Hanya member channel kamu</h3>
+        <p class="muted">Penonton verifikasi identitas YouTube-nya lewat Google, lalu kami cek status membership-nya ke channel kamu. Bukan member, tidak bisa menggambar.</p>
+        <ul class="ticks">
+          <li>Cek otomatis via YouTube Members API</li>
+          <li>Ada daftar member manual sebagai cadangan</li>
+          <li>Ubah mode kapan saja — yang bukan member langsung keluar</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ================= KEAMANAN ================= -->
+  <section class="shell section">
+    <div class="panel security">
+      <div class="security-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M12 2.5 4 6v6c0 5 3.4 8.6 8 9.5 4.6-.9 8-4.5 8-9.5V6l-8-3.5Z"/>
+          <path d="m8.6 12.2 2.4 2.4 4.6-4.8"/>
+        </svg>
+      </div>
+      <div>
+        <p class="eyebrow">Keamanan izin (OAuth)</p>
+        <h2 class="security-title">Hanya meminta akses <span class="mint">Read-Only</span>.</h2>
+        <p class="lead" style="margin-top:1rem">
+          Kami hanya meminta scope <code>youtube.readonly</code> untuk menampilkan
+          <strong>nama &amp; avatar YouTube publik</strong> kamu.
+          Kami <strong>tidak menyimpan data pribadi atau password</strong>.
+        </p>
+        <div class="perm-list">
+          <div class="perm perm--yes"><span>✓</span> Baca nama &amp; foto channel publik</div>
+          <div class="perm perm--no"><span>✕</span> Upload, ubah, atau hapus video</div>
+          <div class="perm perm--no"><span>✕</span> Baca atau simpan password</div>
+          <div class="perm perm--no"><span>✕</span> Akses email pribadi penonton</div>
+        </div>
+        <p class="tiny muted" style="margin-top:1.2rem">
+          Scope membership (<code>channel-memberships.creator</code>) bersifat opsional dan hanya diminta
+          kalau kamu sendiri mengaktifkan mode member. Bisa dicabut kapan saja di
+          <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">izin akun Google</a> kamu.
+          Penggunaan data yang kami terima dari Google API mematuhi
+          <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>,
+          termasuk persyaratan Limited Use.
+          Selengkapnya di <a href="/privacy">kebijakan privasi</a> dan <a href="/terms">syarat &amp; ketentuan</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CTA ================= -->
+  <section class="shell section cta">
+    <h2 class="display" style="font-size:clamp(2.4rem,8vw,6rem)">Siaran<br>berikutnya<br><span class="hot">lebih rame.</span></h2>
+    <a class="btn btn--google" href="/login">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.2 5.6c4.2-3.9 6.6-9.6 6.6-16.4z"/><path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.4s.3-3 .8-4.4l-7.8-6.1C1 17 0 20.4 0 24s1 7 2.6 10.2l7.8-5.5z"/><path fill="#34A853" d="M24 48c6.2 0 11.5-2 15.3-5.5l-7.2-5.6c-2 1.4-4.6 2.2-8.1 2.2-6.4 0-11.7-3.7-13.6-9.1l-7.8 5.5C6.5 42.6 14.6 48 24 48z"/></svg>
+      Daftar sekarang, gratis
+    </a>
+  </section>
+</main>
+
+<footer class="footer shell">
+  <div class="spread">
+    <span><span class="hot">●</span> Drawing In Live — kanvas kolaboratif untuk live streamer</span>
+    <span class="row-tight">
+      <a href="/privacy">Kebijakan privasi</a>
+      <span class="muted">·</span>
+      <a href="/terms">Syarat &amp; ketentuan</a>
+      <span class="muted">·</span>
+      <a href="/join">Gabung room</a>
+      <span class="muted">·</span>
+      <a href="/login">Login YouTuber</a>
+    </span>
+  </div>
+</footer>
+
+<script src="/static/js/board.js"></script>
+<script src="/static/js/demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overlay — Drawing In Live</title>
+<meta name="robots" content="noindex">
+<style>
+  /* Deliberately standalone: no shared CSS, no web fonts, nothing that could
+     paint a background. OBS composites whatever this page leaves transparent. */
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: transparent; overflow: hidden;
+  }
+  #board { display: block; width: 100%; height: 100%; }
+
+  /* Status chip. Hidden once connected, and always hidden when ?hud=0. */
+  #hud {
+    position: fixed; top: 10px; left: 10px; z-index: 10;
+    font: 500 11px/1.5 "DM Mono", ui-monospace, Consolas, monospace;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: #f4efe4; background: rgba(10, 9, 8, 0.82);
+    border: 1px solid #3d362d; border-left: 3px solid #ff3b1f;
+    padding: 6px 10px; white-space: nowrap;
+    transition: opacity 0.4s;
+  }
+  #hud.gone { opacity: 0; pointer-events: none; }
+  #hud b { color: #ff3b1f; font-weight: 500; }
+</style>
+</head>
+<body>
+<canvas id="board"></canvas>
+<div id="hud">Drawing In Live · <b>menghubungkan…</b></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/static/js/board.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const token = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+  const params = new URLSearchParams(location.search);
+  const showHud = params.get('hud') !== '0';
+
+  const hud = document.getElementById('hud');
+  let hudTimer = null;
+
+  function status(text, sticky) {
+    if (!showHud) { hud.style.display = 'none'; return; }
+    hud.innerHTML = `Drawing In Live · <b>${text}</b>`;
+    hud.classList.remove('gone');
+    clearTimeout(hudTimer);
+    if (!sticky) hudTimer = setTimeout(() => hud.classList.add('gone'), 4000);
+  }
+
+  const board = new Board(document.getElementById('board'), {
+    width: 1280, height: 720,
+    // The OBS source is sized to the canvas, so stretching keeps a 1:1 mapping
+    // and avoids letterboxing inside the browser source.
+    fit: params.get('fit') === 'contain' ? 'contain' : 'stretch',
+    showNames: true,
+  });
+
+  function applySettings(settings) {
+    board.setOptions({
+      width: settings.canvasWidth,
+      height: settings.canvasHeight,
+      showNames: settings.showNames,
+      fadeSeconds: settings.fadeSeconds,
+    });
+    // 'transparent' is the whole point of a browser source, but a solid colour
+    // is useful when the overlay is used as a standalone scene.
+    document.body.style.background =
+      settings.overlayBackground && settings.overlayBackground !== 'transparent'
+        ? settings.overlayBackground : 'transparent';
+  }
+
+  const socket = io({ withCredentials: true, transports: ['websocket', 'polling'] });
+
+  socket.on('connect', () => {
+    status('menyambungkan room…', true);
+    socket.emit('overlay:join', { token });
+  });
+
+  socket.on('joined', (data) => {
+    applySettings(data.settings);
+    board.setStrokes(data.strokes);
+    status('siaran aktif');
+  });
+
+  socket.on('settings', applySettings);
+  socket.on('s:start', (d) => board.addStroke({ ...d, pts: [d.x, d.y], done: false }));
+  socket.on('s:pts', (d) => board.appendPoints(d.id, d.pts));
+  socket.on('s:end', (d) => board.endStroke(d.id));
+  socket.on('remove', (d) => board.removeStrokes(d.ids));
+  socket.on('clear', () => board.clear());
+
+  socket.on('denied', (d) => {
+    status(d.message || 'token tidak valid', true);
+    socket.disconnect();
+  });
+
+  socket.on('disconnect', () => status('terputus — menyambung ulang…', true));
+})();
+</script>
+</body>
+</html>

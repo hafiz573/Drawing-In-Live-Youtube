@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard — Drawing In Live</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/static/img/favicon.svg">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/auth.css">
+<link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+<div class="bg-layers"></div>
+<div class="grain"></div>
+<div class="scanlines"></div>
+
+<header class="topbar">
+  <a class="brand" href="/"><span class="tally-dot"></span> Drawing&nbsp;In&nbsp;Live</a>
+  <div class="row-tight">
+    <span class="conn" id="conn" data-state="idle"><span>Menghubungkan</span></span>
+    <div class="who">
+      <img class="avatar" id="meAvatar" src="/static/img/avatar-fallback.svg" alt="">
+      <div>
+        <div class="who-name" id="meName">…</div>
+        <div class="who-sub" id="meSub">channel</div>
+      </div>
+    </div>
+    <button class="btn btn--sm" id="logoutBtn">Keluar</button>
+  </div>
+</header>
+
+<main class="dash">
+  <!-- ============ LEFT: live canvas + moderation ============ -->
+  <div class="col">
+    <section class="panel panel--hot reveal d1">
+      <div class="panel-head">
+        <span class="panel-title">Kanvas live</span>
+        <span class="badge badge--live" id="liveBadge"><span class="tally-dot" style="width:6px;height:6px"></span> On air</span>
+      </div>
+
+      <div class="preview-frame" id="previewFrame">
+        <canvas id="preview"></canvas>
+        <div class="preview-empty" id="previewEmpty">
+          <span class="eyebrow">Kanvas kosong</span>
+          <span class="tiny muted">Bagikan link di bawah ke chat kamu</span>
+        </div>
+      </div>
+
+      <div class="control-bar">
+        <button class="btn btn--sm" id="freezeBtn">Bekukan kanvas</button>
+        <button class="btn btn--sm" id="undoLastBtn">Batal goresan terakhir</button>
+        <button class="btn btn--sm btn--danger" id="clearAllBtn">Hapus semua</button>
+        <a class="btn btn--sm" id="openOverlayBtn" target="_blank" rel="noopener">Buka overlay ↗</a>
+      </div>
+
+      <div class="stat-row" style="margin-top:1rem">
+        <div class="stat"><div class="n" id="statOnline">0</div><div class="k">Penonton online</div></div>
+        <div class="stat"><div class="n" id="statStrokes">0</div><div class="k">Goresan di kanvas</div></div>
+        <div class="stat"><div class="n" id="statMode">—</div><div class="k">Mode akses</div></div>
+      </div>
+    </section>
+
+    <section class="panel reveal d2">
+      <div class="panel-head">
+        <span class="panel-title">Penonton</span>
+        <span class="tiny muted" id="viewerCount">0 orang</span>
+      </div>
+      <ul class="viewer-list" id="viewers"></ul>
+      <div class="empty-note" id="viewersEmpty">
+        Belum ada yang gabung.<br>Bagikan kode <strong id="emptyCode" class="amber"></strong> ke chat kamu.
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ RIGHT: links + settings ============ -->
+  <div class="col">
+    <section class="panel reveal d2">
+      <div class="panel-head"><span class="panel-title">Link &amp; overlay</span></div>
+
+      <div class="linkset">
+        <div class="link-row">
+          <div class="label-row">
+            <span class="label" style="font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--paper-mute)">Kode room</span>
+            <button class="btn btn--sm" id="rotateRoom">Ganti kode</button>
+          </div>
+          <div class="roomcode" id="roomCode">······</div>
+        </div>
+
+        <div class="link-row">
+          <div class="label-row">
+            <span class="label" style="font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--paper-mute)">Link untuk penonton</span>
+            <span class="tiny muted">tempel di chat</span>
+          </div>
+          <div class="copybox">
+            <input class="grow" id="drawUrl" readonly aria-label="Link menggambar untuk penonton">
+            <button class="btn btn--sm" data-copy="#drawUrl" data-copy-label="Link penonton tersalin">Salin</button>
+          </div>
+        </div>
+
+        <div class="link-row">
+          <div class="label-row">
+            <span class="label" style="font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--paper-mute)">URL overlay OBS</span>
+            <button class="btn btn--sm btn--danger" id="rotateOverlay">Reset URL</button>
+          </div>
+          <div class="copybox">
+            <input class="grow" id="overlayUrl" readonly aria-label="URL overlay untuk OBS">
+            <button class="btn btn--sm" data-copy="#overlayUrl" data-copy-label="URL overlay tersalin">Salin</button>
+          </div>
+          <p class="hint" style="font-size:0.7rem;color:var(--paper-mute);margin-top:0.45rem;line-height:1.5">
+            OBS → <strong>+ Sources → Browser</strong> → tempel URL, isi Width/Height sesuai ukuran kanvas,
+            centang <em>Shutdown source when not visible</em>. <strong class="hot">Rahasiakan URL ini.</strong>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- access ---------- -->
+    <section class="panel reveal d3">
+      <div class="panel-head"><span class="panel-title">Siapa yang boleh menggambar</span></div>
+
+      <div class="segment" id="accessSegment">
+        <label>
+          <input type="radio" name="accessMode" value="public" checked>
+          <span class="seg-title">Publik</span>
+          <span class="seg-sub">Siapa pun yang punya link</span>
+        </label>
+        <label>
+          <input type="radio" name="accessMode" value="members">
+          <span class="seg-title">Member</span>
+          <span class="seg-sub">Hanya member channel</span>
+        </label>
+      </div>
+
+      <div id="membersPane" class="hidden" style="margin-top:1.1rem">
+        <div class="member-status" id="memberStatus">
+          <span class="dot"></span>
+          <div class="grow" id="memberStatusText">Mengecek koneksi Members API…</div>
+        </div>
+
+        <div class="row" style="margin-top:0.7rem">
+          <a class="btn btn--sm btn--amber" id="connectMembers" href="/auth/google?role=members">Hubungkan cek member</a>
+          <button class="btn btn--sm" id="refreshMembers">Muat ulang daftar</button>
+        </div>
+
+        <label class="field" style="margin-top:1.1rem">
+          <span class="label">Sumber data member</span>
+          <select id="membershipSource">
+            <option value="auto">Otomatis — API dulu, lalu daftar manual</option>
+            <option value="api">Hanya YouTube Members API</option>
+            <option value="allowlist">Hanya daftar manual</option>
+          </select>
+          <span class="hint">
+            Members API butuh channel yang sudah masuk YouTube Partner Program.
+            Kalau belum, pakai daftar manual di bawah.
+          </span>
+        </label>
+
+        <div class="setting-block">
+          <span class="label" style="font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--paper-mute)">Daftar member manual</span>
+          <form class="row" id="allowForm" style="margin-top:0.5rem;flex-wrap:nowrap">
+            <input type="text" id="allowChannelId" placeholder="UCxxxxxxxxxxxxxxxxxxxxxx" class="grow" aria-label="Channel ID member">
+            <button class="btn btn--sm" type="submit">Tambah</button>
+          </form>
+          <span class="hint" style="display:block;font-size:0.7rem;color:var(--paper-mute);margin-top:0.4rem;line-height:1.5">
+            Channel ID diawali <code>UC</code>. Penonton bisa melihatnya di
+            <em>Setelan YouTube → Lanjutan</em>.
+          </span>
+          <ul class="allow-list" id="allowList"></ul>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <label class="toggle">
+          <input type="checkbox" id="requireApproval"><span class="track"></span>
+          <span class="toggle-text">
+            <strong>Moderasi: setujui dulu</strong>
+            <span>Penonton baru tidak bisa menggambar sampai kamu izinkan satu per satu.</span>
+          </span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="locked"><span class="track"></span>
+          <span class="toggle-text">
+            <strong>Bekukan kanvas</strong>
+            <span>Semua orang berhenti menggambar, gambar yang ada tetap tampil.</span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ---------- canvas + brush ---------- -->
+    <section class="panel reveal d4">
+      <div class="panel-head"><span class="panel-title">Tampilan &amp; kuas</span></div>
+
+      <div class="grid-2">
+        <label class="field">
+          <span class="label">Lebar kanvas</span>
+          <input type="number" id="canvasWidth" min="320" max="3840" step="10">
+        </label>
+        <label class="field">
+          <span class="label">Tinggi kanvas</span>
+          <input type="number" id="canvasHeight" min="180" max="2160" step="10">
+        </label>
+      </div>
+      <p class="hint" style="font-size:0.7rem;color:var(--paper-mute);margin-top:0.4rem">
+        Samakan dengan Width/Height di Browser Source OBS.
+      </p>
+
+      <div class="setting-block">
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Kuas maksimum (px)</span>
+            <input type="number" id="maxBrush" min="2" max="120">
+          </label>
+          <label class="field">
+            <span class="label">Latar overlay</span>
+            <select id="overlayBackground">
+              <option value="transparent">Transparan (untuk OBS)</option>
+              <option value="#0a0908">Hitam</option>
+              <option value="#f4efe4">Putih</option>
+              <option value="#00ff00">Hijau (chroma key)</option>
+            </select>
+          </label>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="showNames"><span class="track"></span>
+          <span class="toggle-text">
+            <strong>Tampilkan nama penonton</strong>
+            <span>Nama muncul di ujung goresan yang sedang digambar.</span>
+          </span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="allowEraser"><span class="track"></span>
+          <span class="toggle-text">
+            <strong>Izinkan penghapus</strong>
+            <span>Kalau dimatikan, penonton hanya bisa menghapus gambarnya sendiri.</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="setting-block">
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Jeda antar goresan (ms)</span>
+            <input type="number" id="cooldownMs" min="0" max="60000" step="100">
+            <span class="hint">0 = tanpa jeda. Naikkan kalau chat mulai spam.</span>
+          </label>
+          <label class="field">
+            <span class="label">Maks goresan / penonton</span>
+            <input type="number" id="strokeBudget" min="0" max="500">
+            <span class="hint">0 = tanpa batas. Goresan lama terhapus otomatis.</span>
+          </label>
+        </div>
+        <label class="field" style="margin-top:0.8rem">
+          <span class="label">Goresan memudar setelah (detik)</span>
+          <input type="number" id="fadeSeconds" min="0" max="600">
+          <span class="hint">0 = tetap sampai dihapus. Cocok untuk sesi panjang.</span>
+        </label>
+      </div>
+
+      <div class="save-bar">
+        <span class="tiny muted" id="saveHint">Perubahan langsung diterapkan ke semua penonton.</span>
+        <button class="btn btn--primary btn--sm" id="saveBtn">Simpan setelan</button>
+      </div>
+    </section>
+
+    <p class="tiny muted reveal d5" style="text-align:center">
+      Izin Google bersifat read-only · <a href="/privacy">kebijakan privasi</a> ·
+      <a href="/terms">syarat &amp; ketentuan</a> ·
+      <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">cabut izin</a>
+    </p>
+  </div>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/board.js"></script>
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>
