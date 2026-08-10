@@ -47,8 +47,11 @@ body {
   font-size: 15px;
   line-height: 1.6;
   font-weight: 400;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  /* `clip` rather than `hidden`: hidden would turn body into a scroll
+     container and break the sticky topbar. This is a backstop only — each
+     overflow source is fixed at the source. */
+  overflow-x: clip;
 }
 
 /* --- atmosphere ---------------------------------------------------------- */
@@ -105,12 +108,31 @@ h1, h2, h3, h4 {
   line-height: 0.94;
   margin: 0;
   text-wrap: balance;
+  /* Long Indonesian compounds ("MENGGAMBAR.") must never punch out of their
+     column — at display sizes a single word can be wider than the layout. */
+  overflow-wrap: break-word;
 }
 
+/* Viewport-based fallback. Anywhere the heading sits in a column narrower than
+   the page, a containment context overrides this with cqi units — see
+   `.measure` below — so the type scales to its box instead of the window. */
 .display {
-  font-size: clamp(3rem, 11vw, 8.5rem);
+  font-size: clamp(2.5rem, 9vw, 7.5rem);
   text-transform: uppercase;
 }
+
+/**
+ * Marks an element as the sizing reference for the display type inside it.
+ * `cqi` is 1% of this box's inline size, so the heading tracks the column it
+ * actually occupies rather than the viewport.
+ */
+.measure {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.measure .display { font-size: clamp(2.5rem, 12cqi, 7.5rem); }
+.measure .section-title { font-size: clamp(1.75rem, 7cqi, 3.4rem); }
 
 .eyebrow {
   font-size: 0.7rem;
@@ -150,7 +172,12 @@ code, .code {
 /* --- chrome / topbar ----------------------------------------------------- */
 .topbar {
   position: sticky; top: 0; z-index: 60;
-  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.6rem 1rem;
+  /* The dashboard bar carries brand + status + identity + sign-out, which
+     cannot fit on one phone-width line. Let it wrap instead of pushing the
+     page wider than the viewport. */
+  flex-wrap: wrap;
   padding: 0.85rem var(--gutter);
   background: rgb(10 9 8 / 0.82);
   backdrop-filter: blur(14px) saturate(140%);
@@ -181,12 +208,17 @@ code, .code {
 
 /* --- panel --------------------------------------------------------------- */
 .panel {
+  /* Published as a variable so full-bleed children (e.g. the sticky save bar)
+     can cancel exactly this padding at every width. Hard-coding the value made
+     them overflow the panel at everything between the two clamp endpoints. */
+  --panel-pad: clamp(1.1rem, 2.4vw, 1.9rem);
+
   position: relative;
   background:
     linear-gradient(180deg, rgb(255 255 255 / 0.022), transparent 40%),
     var(--panel);
   border: 1px solid var(--line);
-  padding: clamp(1.1rem, 2.4vw, 1.9rem);
+  padding: var(--panel-pad);
 }
 
 /* corner brackets — the rack-mount detail */

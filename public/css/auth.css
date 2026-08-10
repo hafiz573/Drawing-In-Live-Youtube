@@ -82,6 +82,8 @@ body.centered {
 /* --- 404 ------------------------------------------------------------------ */
 .big-404 {
   font-family: var(--display); font-weight: 800;
-  font-size: clamp(5rem, 22vw, 12rem); line-height: 0.85;
+  /* The card is capped at 30rem, so 22vw pushed the digits straight out of it
+     on any wide screen. Bounded to what actually fits. */
+  font-size: clamp(4rem, 14vw, 9rem); line-height: 0.85;
   color: transparent; -webkit-text-stroke: 2px var(--line-hot);
 }
