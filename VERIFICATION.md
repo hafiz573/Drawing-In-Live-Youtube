@@ -17,26 +17,47 @@ lebih cepat daripada restricted scope. Selama menunggu, aplikasi tetap bisa dipa
 
 ## Ceklis lengkap
 
-### Fase 1 — Domain publik (wajib, kerjakan duluan)
+### Fase 1 — Domain sendiri (wajib, kerjakan duluan)
 
-- [ ] **Punya domain**, misalnya `drawinglive.app` atau subdomain seperti `live.domainkamu.com`.
-- [ ] **Deploy aplikasi ke domain itu dengan HTTPS.** Opsi termurah:
-  - **Railway / Render / Fly.io** — cukup `Dockerfile` yang sudah ada di repo, HTTPS otomatis.
-  - **VPS + Caddy/Nginx** — reverse proxy dengan sertifikat Let's Encrypt.
-  - Set env di server produksi:
-    ```env
-    NODE_ENV=production
-    PUBLIC_ORIGIN=https://drawinglive.app
-    OAUTH_REDIRECT_URI=https://drawinglive.app/auth/google/callback
-    ```
-    `NODE_ENV=production` menyalakan flag `Secure` pada cookie sesi — Google mengecek ini.
+Aplikasi sudah jalan di Vercel, jadi yang kurang cuma domainnya.
+
+**Kenapa `*.vercel.app` tidak cukup.** Secara teknis subdomain itu bisa diverifikasi di Search
+Console, tapi tim review Google secara rutin menolak aplikasi yang beralamat di domain hosting
+gratis bersama — mereka ingin melihat aplikasi berada di domain yang benar-benar kamu kendalikan.
+Domain `.com` atau `.id` harganya sekitar Rp 15.000–200.000 per tahun; itu jauh lebih murah
+daripada menunggu 4 minggu lalu ditolak.
+
+- [ ] **Beli domain.** Registrar mana pun boleh — Niagahoster, Domainesia, Cloudflare Registrar,
+      Namecheap. Pilih nama yang nyambung dengan aplikasinya, karena nama ini ikut dinilai reviewer.
+
+- [ ] **Sambungkan ke Vercel.**
+      Project → **Settings → Domains → Add** → ketik domainmu → Vercel menampilkan record DNS
+      yang harus dipasang di registrar (biasanya `A` ke `76.76.21.21`, atau `CNAME` ke
+      `cname.vercel-dns.com` untuk subdomain). Propagasi DNS 5 menit sampai beberapa jam.
+      HTTPS diterbitkan Vercel otomatis setelah domainnya terdeteksi.
+
+- [ ] **Set environment variable di Vercel** (Settings → Environment Variables), lalu **Redeploy**:
+      ```env
+      PUBLIC_ORIGIN=https://domainkamu.com
+      OAUTH_REDIRECT_URI=https://domainkamu.com/auth/google/callback
+      NODE_ENV=production
+      ```
+      `PUBLIC_ORIGIN` mengunci semua link dan redirect URI ke domain itu, apa pun URL yang dibuka
+      pengunjung. `NODE_ENV=production` menyalakan flag `Secure` pada cookie sesi — Google mengecek
+      ini saat review.
+
+- [ ] **Tambahkan redirect URI baru** di Google Cloud Console → Credentials → OAuth client:
+      `https://domainkamu.com/auth/google/callback`
+
 - [ ] **Verifikasi kepemilikan domain** di
       [Google Search Console](https://search.google.com/search-console) memakai **akun Google yang
-      sama** dengan pemilik proyek Cloud. Tanpa ini, submit akan ditolak otomatis.
-- [ ] Pastikan halaman-halaman ini bisa dibuka publik **tanpa login**, dari jaringan mana pun:
-  - `https://domainkamu/` — homepage, menjelaskan fungsi aplikasi ✔ sudah ada
-  - `https://domainkamu/privacy` — kebijakan privasi ✔ sudah ada
-  - `https://domainkamu/terms` — syarat & ketentuan ✔ sudah ada
+      sama** dengan pemilik proyek Cloud. Pilih properti tipe **Domain**, lalu pasang record `TXT`
+      yang diberikan di DNS registrar. Tanpa langkah ini, submit ditolak otomatis tanpa direview.
+
+- [ ] **Cek ketiga halaman ini terbuka publik tanpa login**, dari jaringan mana pun:
+  - `https://domainkamu.com/` — homepage yang menjelaskan fungsi aplikasi ✔ sudah ada
+  - `https://domainkamu.com/privacy` — kebijakan privasi ✔ sudah ada
+  - `https://domainkamu.com/terms` — syarat & ketentuan ✔ sudah ada
 
 ### Fase 2 — OAuth consent screen
 
@@ -70,7 +91,8 @@ asalkan alurnya terlihat jelas dan tidak dipotong-potong.
 
 Video harus memperlihatkan, berurutan:
 
-1. **URL bar terlihat**, menampilkan `https://domainkamu` — bukan localhost.
+1. **URL bar terlihat**, menampilkan `https://domainkamu.com` — bukan localhost, dan bukan
+   `*.vercel.app`.
 2. Klik tombol **"Lanjutkan dengan Google"** di halaman login.
 3. **Layar consent Google secara utuh**, sampai daftar scope-nya terbaca jelas —
    perbesar/zoom bagian yang menyebut akses YouTube.
@@ -137,19 +159,21 @@ Google meminta ini dalam bahasa Inggris.
 
 ---
 
-## Kalau tidak mau menunggu 2–6 minggu
+## Selama menunggu review
 
-Alternatif yang menghilangkan peringatan **tanpa verifikasi sama sekali**: jadikan
-`youtube.readonly` opsional. Login default hanya memakai `openid`, `email`, `profile` —
-semuanya non-sensitive, jadi tidak ada layar peringatan. Nama dan avatar diambil dari akun Google,
-dan scope YouTube baru diminta lewat tombol terpisah di dashboard untuk kreator yang memang mau
-menampilkan identitas channel-nya.
+Layar peringatan tetap muncul sampai Google menyetujui. Yang bisa dilakukan sementara:
 
-Konsekuensinya: kreator yang nama akun Google-nya berbeda dari nama channel harus menekan satu
-tombol tambahan. Bilang saja kalau mau saya kerjakan — sekitar 15 menit.
+- Tambahkan setiap akun yang perlu mencoba ke **Test users** di OAuth consent screen
+  (maksimal 100), lalu masuk lewat **Lanjutan → Buka Drawing In Live (tidak aman)**.
+- Catat: pada aplikasi berstatus *Testing*, refresh token Google kedaluwarsa tiap 7 hari,
+  jadi cek member otomatis perlu dihubungkan ulang mingguan. Batasan ini hilang begitu
+  aplikasi berstatus *In production*.
 
-Dua jalur ini juga bisa digabung: pakai skema opsional itu **sekarang** supaya pengguna langsung
-mulus, sambil verifikasi tetap berjalan di latar belakang.
+Kalau penantiannya ternyata terlalu mengganggu, masih ada jalan pintas yang bisa dikerjakan
+kapan saja tanpa membatalkan proses verifikasi: jadikan `youtube.readonly` opsional, sehingga
+login default hanya memakai scope non-sensitive dan sama sekali tidak memicu layar peringatan.
+Nama dan avatar diambil dari akun Google, dan identitas channel ditarik lewat tombol terpisah
+di dashboard. Sekitar 20 menit kerja, dan tidak menghalangi verifikasi yang sedang berjalan.
 
 ---
 
