@@ -24,10 +24,12 @@ COPY views ./views
 # Run unprivileged. `node` (uid 1000) ships with the base image.
 USER node
 
+# Hosts like Railway, Render and Fly inject their own PORT; default to 3000 locally.
+ENV PORT=3000
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:3000/healthz || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT}/healthz" || exit 1
 
 # tini reaps zombies and forwards SIGTERM so our graceful shutdown actually runs.
 ENTRYPOINT ["/sbin/tini", "--"]

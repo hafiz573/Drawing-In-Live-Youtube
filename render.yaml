@@ -1,0 +1,46 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy: Render Dashboard → New → Blueprint → pilih repo ini.
+# Render membaca file ini, membuat service-nya, lalu menanyakan env var yang
+# ditandai `sync: false` (yang rahasia — tidak pernah masuk ke repo).
+
+services:
+  - type: web
+    name: drawing-in-live
+    runtime: node
+    plan: free
+    # Singapura = latensi terendah untuk penonton Indonesia.
+    region: singapore
+
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+
+    # Render menganggap service sehat kalau endpoint ini balas 200.
+    # /healthz ikut mengecek koneksi database, bukan cuma "proses hidup".
+    healthCheckPath: /healthz
+
+    # Deploy ulang otomatis setiap kali ada push ke branch default.
+    autoDeployTrigger: commit
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Render yang membuat nilainya — kamu tidak perlu memikirkannya.
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # sync: false → Render meminta nilainya saat setup, dan menyimpannya
+      # terenkripsi. Tidak pernah tersimpan di Git.
+      - key: DATABASE_URL      # connection string Neon
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+      # Isi setelah tahu URL Render kamu, mis. https://drawing-in-live.onrender.com
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: OAUTH_REDIRECT_URI
+        sync: false

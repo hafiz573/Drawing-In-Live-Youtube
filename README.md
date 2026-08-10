@@ -110,7 +110,49 @@ persyaratan domain, video demo, dan teks justifikasi scope yang siap salin-tempe
 
 ---
 
-## 4. Pasang overlay di OBS
+## 4. Deploy ke Render
+
+Aplikasi ini butuh proses Node yang hidup terus (Socket.IO memakai koneksi WebSocket persisten
+dan menyimpan state kanvas di memori). Karena itu **Vercel, Netlify, dan platform serverless lain
+tidak cocok** — halamannya tampil, tapi kanvasnya tidak akan pernah tersambung.
+
+Repo ini sudah berisi [`render.yaml`](render.yaml), jadi tinggal:
+
+1. **Render Dashboard → New → Blueprint** → pilih repo `Drawing-In-Live-Youtube`.
+2. Render membaca blueprint-nya dan meminta env var rahasia. Isi:
+   - `DATABASE_URL` — connection string Neon kamu
+   - `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET`
+   - `PUBLIC_ORIGIN` dan `OAUTH_REDIRECT_URI` — **kosongkan dulu**, diisi di langkah 4
+   - `SESSION_SECRET` dibuat otomatis oleh Render, biarkan saja
+3. Klik **Apply**, tunggu build selesai. Catat URL yang diberikan Render,
+   misalnya `https://drawing-in-live.onrender.com`.
+4. **Environment → Edit**, isi dua env var tadi dengan URL itu, lalu simpan
+   (service akan restart sendiri):
+   ```env
+   PUBLIC_ORIGIN=https://drawing-in-live.onrender.com
+   OAUTH_REDIRECT_URI=https://drawing-in-live.onrender.com/auth/google/callback
+   ```
+5. **Google Cloud Console → Credentials → OAuth client** kamu, tambahkan di
+   *Authorized redirect URIs*:
+   ```
+   https://drawing-in-live.onrender.com/auth/google/callback
+   ```
+   Biarkan `http://localhost:3000/auth/google/callback` tetap ada supaya development lokal jalan.
+
+Setelah itu buka URL Render-nya dan login seperti biasa.
+
+### Catatan free tier
+
+- Service **tidur setelah 15 menit tanpa trafik**, dan butuh ~50 detik untuk bangun.
+  Selama siaran berlangsung, koneksi WebSocket dari OBS dan penonton dihitung sebagai trafik,
+  jadi tidak akan tidur di tengah jalan. **Buka overlay 1 menit sebelum mulai siaran** supaya
+  sudah panas saat dibutuhkan.
+- Overlay dan halaman menggambar otomatis menyambung ulang kalau koneksi sempat putus.
+- Push ke branch `main` memicu deploy ulang otomatis.
+
+---
+
+## 5. Pasang overlay di OBS
 
 1. Login → buka **Dashboard** → salin **URL overlay**.
 2. Di OBS: **Sources → + → Browser**.
@@ -133,7 +175,7 @@ Parameter URL overlay yang bisa dipakai:
 
 ---
 
-## 5. Mode akses: Publik vs Member
+## 6. Mode akses: Publik vs Member
 
 Diatur di **Dashboard → Siapa yang boleh menggambar**.
 
@@ -156,7 +198,7 @@ langsung **mengeluarkan penonton yang bukan member**.
 
 ---
 
-## 6. Kontrol host lainnya
+## 7. Kontrol host lainnya
 
 Semua ada di dashboard dan berlaku seketika ke semua penonton + overlay:
 
@@ -170,7 +212,7 @@ Semua ada di dashboard dan berlaku seketika ke semua penonton + overlay:
 
 ---
 
-## 7. Arsitektur
+## 8. Arsitektur
 
 ```
 server/
@@ -207,7 +249,7 @@ setelan, bukan saat menggambar).
 
 ---
 
-## 8. Test
+## 9. Test
 
 Jalankan server dulu (`npm run dev`), lalu di terminal lain:
 
@@ -250,7 +292,7 @@ Untuk coba manual, buka `http://localhost:3000/draw/<ROOM_CODE>` dan
 
 ---
 
-## 9. Variabel lingkungan
+## 10. Variabel lingkungan
 
 | Variabel | Wajib | Keterangan |
 | --- | --- | --- |
@@ -265,7 +307,7 @@ Untuk coba manual, buka `http://localhost:3000/draw/<ROOM_CODE>` dan
 
 ---
 
-## 10. Privasi
+## 11. Privasi
 
 Halaman `/privacy` memuat detailnya. Ringkasnya:
 
