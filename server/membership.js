@@ -35,13 +35,28 @@ function humanReason(err) {
   switch (err.reason) {
     case 'channelMembershipsNotEnabled':
     case 'notPartner':
-      return 'Channel ini belum aktif di YouTube Partner Program, jadi Members API tidak tersedia. Pakai daftar member manual.';
-    case 'insufficientPermissions':
+      return 'Channel ini belum memenuhi syarat Members API — butuh YouTube Partner Program '
+        + 'dengan fitur membership aktif. Pakai daftar member manual di bawah.';
+
+    // `forbidden` is what members.list actually returns for a channel that is
+    // simply not eligible, which is by far the common case. Treating it as a
+    // missing permission sent creators to re-grant a scope they already had.
     case 'forbidden':
+      return 'YouTube menolak permintaan daftar member. Paling sering ini berarti channelmu belum '
+        + 'memenuhi syarat membership (perlu YouTube Partner Program dengan fitur membership aktif). '
+        + 'Pakai daftar member manual di bawah.';
+
+    case 'insufficientPermissions':
     case 'ACCESS_TOKEN_SCOPE_INSUFFICIENT':
       return 'Izin membership belum diberikan. Klik "Hubungkan cek member" di dashboard.';
+
+    case 'accessNotConfigured':
+    case 'SERVICE_DISABLED':
+      return 'YouTube Data API v3 belum aktif di project Google Cloud kamu. Aktifkan di API Library.';
+
     case 'quotaExceeded':
       return 'Kuota YouTube API habis untuk hari ini. Sementara pakai daftar member manual.';
+
     default:
       return err.message || 'Tidak bisa membaca daftar member dari YouTube.';
   }
