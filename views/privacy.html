@@ -24,25 +24,29 @@
 
     <h2>Ringkasnya</h2>
     <p>
-      Hanya meminta akses <strong class="mint">Read-Only</strong> (<code>youtube.readonly</code>)
-      untuk menampilkan nama &amp; avatar YouTube publik.
-      Kami <strong>tidak menyimpan data pribadi atau password</strong>.
+      Login biasa hanya meminta identitas dasar Google — <strong class="mint">tanpa scope sensitif
+      apa pun</strong>. Izin baca channel YouTube bersifat <strong>opsional</strong> dan hanya
+      diminta lewat layar persetujuan terpisah kalau kamu sendiri memilihnya.
+      Semua izin bersifat <strong>read-only</strong>, dan kami
+      <strong>tidak menyimpan data pribadi atau password</strong>.
     </p>
 
     <h2>Scope yang diminta dan alasannya</h2>
     <ul>
       <li>
         <code>openid</code>, <code>userinfo.email</code>, <code>userinfo.profile</code> —
-        identitas dasar Google. Dipakai untuk mengenali akunmu saat login ulang, supaya kamu
-        kembali ke room yang sama, bukan room baru.
+        satu-satunya yang diminta saat login biasa. Dipakai untuk mengenali akunmu saat login
+        ulang, supaya kamu kembali ke room yang sama, bukan room baru, serta untuk menampilkan
+        nama dan foto profil Google-mu.
       </li>
       <li>
-        <code>youtube.readonly</code> —
-        dipakai <strong>hanya</strong> untuk memanggil <code>channels.list?mine=true</code> satu kali
-        saat login, guna membaca <em>judul dan foto profil channel publik</em> milikmu. Nama dan avatar
-        itu ditampilkan di dashboardmu dan di halaman menggambar, supaya penonton yakin sedang
-        menggambar di room channel yang benar. Scope ini <strong>tidak bisa</strong> mengubah,
-        mengunggah, menghapus, atau membaca video, komentar, analytics, maupun daftar langganan.
+        <code>youtube.readonly</code> — <strong>opsional</strong>, tidak diminta saat login biasa.
+        Hanya diminta lewat layar persetujuan terpisah dalam dua keadaan: kalau kamu menekan
+        "Hubungkan channel YouTube" di dashboard, atau kalau kamu penonton yang perlu diperiksa
+        status membership-nya untuk masuk ke room khusus member. Dipakai untuk memanggil
+        <code>channels.list?mine=true</code> guna membaca <em>judul dan foto profil channel
+        publik</em>. Scope ini <strong>tidak bisa</strong> mengubah, mengunggah, menghapus, atau
+        membaca video, komentar, analytics, maupun daftar langganan.
       </li>
       <li>
         <code>youtube.channel-memberships.creator</code> — <strong>opsional</strong>.

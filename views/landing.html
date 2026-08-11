@@ -103,12 +103,14 @@
       </p>
 
       <p class="about-note" lang="en">
-        Signing in uses Google OAuth with read-only scopes. The
-        <code>youtube.readonly</code> scope is used for one purpose only: reading the signed-in
-        creator's own public YouTube channel title and profile picture, which are displayed on
-        their dashboard and in the drawing room so viewers can confirm whose canvas they are
-        drawing on. Drawing In Live never uploads, modifies, or deletes anything on a channel, and
-        never stores passwords. See the <a href="/privacy">privacy policy</a> and
+        Signing in uses Google OAuth and requests only basic account identity
+        (<code>openid</code>, <code>email</code>, <code>profile</code>) — no sensitive scopes.
+        Reading a YouTube channel is optional and requested separately, through its own consent
+        screen, in just two cases: when a creator chooses to display their YouTube channel name and
+        avatar instead of their Google account name, and when a viewer's membership has to be
+        checked before they may draw in a members-only room. Even then the scope is read-only:
+        Drawing In Live never uploads, modifies, or deletes anything on a channel, and never stores
+        passwords. See the <a href="/privacy">privacy policy</a> and
         <a href="/terms">terms of service</a> for details.
       </p>
     </div>

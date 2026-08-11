@@ -75,6 +75,33 @@
 
   <!-- ============ RIGHT: links + settings ============ -->
   <div class="col">
+    <!-- Optional YouTube identity. Kept out of the sign-in flow on purpose:
+         youtube.readonly is a sensitive scope, so asking for it up front would
+         put Google's "unverified app" warning in front of every single user. -->
+    <section class="panel reveal d1 hidden" id="ytPanel">
+      <div class="panel-head">
+        <span class="panel-title">Identitas channel</span>
+        <span class="badge" id="ytBadge">Belum terhubung</span>
+      </div>
+      <div class="yt-row">
+        <img class="avatar avatar--lg" id="ytAvatar" src="/static/img/avatar-fallback.svg" alt="">
+        <div class="grow">
+          <div class="yt-name" id="ytName">—</div>
+          <p class="yt-hint" id="ytHint">
+            Room kamu sekarang memakai nama dari Akun Google. Hubungkan channel YouTube kalau kamu
+            mau penonton melihat nama dan foto channel aslimu di halaman menggambar.
+          </p>
+        </div>
+      </div>
+      <div class="row" style="margin-top:0.9rem">
+        <a class="btn btn--sm btn--amber" id="ytConnect" href="/auth/google?role=youtube">Hubungkan channel YouTube</a>
+      </div>
+      <p class="tiny muted" style="margin-top:0.7rem;line-height:1.55">
+        Langkah ini opsional. Google akan menampilkan layar peringatan karena izin baca channel
+        termasuk scope sensitif — aman dilanjutkan, dan hanya kamu yang melihatnya, bukan penontonmu.
+      </p>
+    </section>
+
     <section class="panel reveal d2">
       <div class="panel-head"><span class="panel-title">Link &amp; overlay</span></div>
 

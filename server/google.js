@@ -21,19 +21,33 @@ const REVOKE_ENDPOINT = 'https://oauth2.googleapis.com/revoke';
 const USERINFO_ENDPOINT = 'https://openidconnect.googleapis.com/v1/userinfo';
 const YT_API = 'https://www.googleapis.com/youtube/v3';
 
-/** Read-only. Nothing here can modify, upload to, or delete from a channel. */
-const BASE_SCOPES = [
-  'openid',
-  'email',
-  'profile',
-  'https://www.googleapis.com/auth/youtube.readonly',
-];
+/**
+ * What an ordinary sign-in asks for. All three are non-sensitive, which means
+ * Google requires no verification for them and shows no "unverified app"
+ * interstitial — sign-in is simply clean.
+ */
+const BASE_SCOPES = ['openid', 'email', 'profile'];
+
+/**
+ * Read-only access to the signed-in account's own YouTube channel, used solely
+ * to read its public title and thumbnail.
+ *
+ * Sensitive, therefore deliberately NOT part of a normal sign-in. It is asked
+ * for separately, through incremental consent, and only when someone actually
+ * needs it: a creator who wants their channel identity shown instead of their
+ * Google account name, or a viewer whose membership must be checked before
+ * they may draw in a members-only room.
+ */
+const YOUTUBE_SCOPE = 'https://www.googleapis.com/auth/youtube.readonly';
 
 /**
  * Only requested via incremental consent when a creator enables members-only
  * mode. Also read-only — it lists the creator's own channel members.
  */
 const MEMBERS_SCOPE = 'https://www.googleapis.com/auth/youtube.channel-memberships.creator';
+
+/** Did this grant actually include permission to read the YouTube channel? */
+const grantedYouTube = (scopes = []) => scopes.includes(YOUTUBE_SCOPE);
 
 function clientId() {
   return process.env.GOOGLE_CLIENT_ID || '';
@@ -181,7 +195,9 @@ async function listMemberChannelIds(accessToken) {
 
 module.exports = {
   BASE_SCOPES,
+  YOUTUBE_SCOPE,
   MEMBERS_SCOPE,
+  grantedYouTube,
   isConfigured,
   redirectUri,
   buildAuthUrl,

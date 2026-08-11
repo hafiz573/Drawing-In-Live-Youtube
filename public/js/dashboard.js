@@ -159,6 +159,34 @@
   };
 
   // ---------------------------------------------------------------------------
+  // Optional YouTube identity
+  // ---------------------------------------------------------------------------
+  function renderYouTubePanel() {
+    const panel = $('#ytPanel');
+    panel.classList.remove('hidden');
+
+    const linked = Boolean(me.youtubeLinked);
+    const badge = $('#ytBadge');
+    badge.className = linked ? 'badge badge--ok' : 'badge badge--warn';
+    badge.textContent = linked ? 'Terhubung' : 'Belum terhubung';
+
+    $('#ytName').textContent = me.channelTitle || me.displayName || '—';
+    $('#ytConnect').textContent = linked ? 'Perbarui dari YouTube' : 'Hubungkan channel YouTube';
+
+    if (linked) {
+      $('#ytHint').textContent =
+        'Penonton melihat nama dan foto channel ini di halaman menggambar. Perbarui kalau kamu '
+        + 'baru mengganti nama atau foto channel.';
+    }
+
+    if (me.channelAvatar) {
+      const img = $('#ytAvatar');
+      img.src = me.channelAvatar;
+      img.onerror = () => { img.src = '/static/img/avatar-fallback.svg'; };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Members-only pane
   // ---------------------------------------------------------------------------
   function renderAllowlist(entries) {
@@ -364,17 +392,27 @@
     $('#overlayUrl').value = me.overlayUrl;
     $('#openOverlayBtn').href = me.overlayUrl;
 
+    renderYouTubePanel();
     fillForm(me.settings);
     wireControls();
     connect();
 
     if (me.settings.accessMode === 'members') loadMemberStatus();
 
-    // Returning from the incremental members consent screen.
-    if (new URLSearchParams(location.search).get('members') === 'connected') {
+    // Returning from one of the incremental consent screens.
+    const params = new URLSearchParams(location.search);
+    if (params.get('members') === 'connected') {
       toast('Izin cek member tersambung.', 'good');
       history.replaceState(null, '', '/dashboard');
       loadMemberStatus({ force: true });
+    }
+    if (params.get('youtube') === 'connected') {
+      toast('Channel YouTube tersambung.', 'good');
+      history.replaceState(null, '', '/dashboard');
+    }
+    if (params.get('youtube') === 'nochannel') {
+      toast('Akun Google itu belum punya channel YouTube.', 'bad');
+      history.replaceState(null, '', '/dashboard');
     }
 
     setInterval(refreshStrokeCount, 1000);

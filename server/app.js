@@ -131,10 +131,23 @@ app.get('/overlay/:token', page('overlay.html'));
 // ---------------------------------------------------------------------------
 // Google OAuth
 //
-// role=creator -> signs in a YouTuber and creates/opens their room
-// role=viewer  -> verifies a viewer's public YouTube identity for members-only rooms
-// role=members -> incremental consent for the optional membership-read scope
+// Scopes are requested per role, never all at once, so an ordinary sign-in only
+// ever sees the non-sensitive set and no "unverified app" warning:
+//
+//   role=creator -> openid/email/profile — plain sign-in, nothing sensitive
+//   role=youtube -> + youtube.readonly, when a creator opts into showing their
+//                   YouTube channel name and avatar instead of their Google one
+//   role=viewer  -> + youtube.readonly, to read a viewer's channel id so their
+//                   membership can be checked for a members-only room
+//   role=members -> + channel-memberships.creator, so a creator's own member
+//                   list can be read
 // ---------------------------------------------------------------------------
+const ROLE_SCOPES = {
+  creator: google.BASE_SCOPES,
+  youtube: [...google.BASE_SCOPES, google.YOUTUBE_SCOPE],
+  viewer: [...google.BASE_SCOPES, google.YOUTUBE_SCOPE],
+  members: [...google.BASE_SCOPES, google.YOUTUBE_SCOPE, google.MEMBERS_SCOPE],
+};
 function safeNext(raw, fallback) {
   const value = String(raw || '');
   // Only same-origin paths; never an absolute URL or a protocol-relative one.
@@ -146,22 +159,21 @@ app.get('/auth/google', (req, res) => {
     return sendPage(res.status(503), 'oauth-missing.html');
   }
 
-  const role = ['creator', 'viewer', 'members'].includes(req.query.role) ? req.query.role : 'creator';
-  if (role === 'members' && !req.user) return res.redirect('/login');
+  const role = Object.hasOwn(ROLE_SCOPES, req.query.role) ? req.query.role : 'creator';
+  if ((role === 'members' || role === 'youtube') && !req.user) return res.redirect('/login');
 
-  const next = safeNext(req.query.next, role === 'creator' ? '/dashboard' : '/');
-  const scopes = role === 'members'
-    ? [...google.BASE_SCOPES, google.MEMBERS_SCOPE]
-    : google.BASE_SCOPES;
+  const next = safeNext(req.query.next, role === 'viewer' ? '/' : '/dashboard');
 
   const state = auth.beginOAuth(res, { role, next });
   res.redirect(google.buildAuthUrl({
     req,
     state,
-    scopes,
+    scopes: ROLE_SCOPES[role],
     // A refresh token is only needed for the background member-list reads.
     offline: role === 'members',
-    prompt: role === 'members' ? 'consent' : undefined,
+    // Force the consent screen for the incremental grants so the extra scope is
+    // actually presented rather than silently skipped by a prior approval.
+    prompt: role === 'members' || role === 'youtube' ? 'consent' : undefined,
   }));
 });
 
@@ -174,10 +186,14 @@ app.get('/auth/google/callback', async (req, res) => {
   try {
     const tokens = await google.exchangeCode(req, String(req.query.code));
     const scopes = String(tokens.scope || '').split(' ').filter(Boolean);
-    const [profile, channel] = await Promise.all([
-      google.fetchOpenIdProfile(tokens.access_token),
-      google.fetchOwnChannel(tokens.access_token),
-    ]);
+
+    const profile = await google.fetchOpenIdProfile(tokens.access_token);
+    // Only reach for the YouTube channel when this grant actually carries the
+    // scope; a plain sign-in deliberately does not, and calling anyway would be
+    // a guaranteed 403.
+    const channel = google.grantedYouTube(scopes)
+      ? await google.fetchOwnChannel(tokens.access_token)
+      : null;
 
     if (flow.role === 'viewer') {
       auth.setViewerSession(res, {
@@ -209,6 +225,9 @@ app.get('/auth/google/callback', async (req, res) => {
       membership.invalidate(user.id);
       return res.redirect('/dashboard?members=connected');
     }
+    if (flow.role === 'youtube') {
+      return res.redirect(channel ? '/dashboard?youtube=connected' : '/dashboard?youtube=nochannel');
+    }
     return res.redirect(safeNext(flow.next, '/dashboard'));
   } catch (err) {
     console.error('[oauth] callback failed:', err.message);
@@ -235,6 +254,9 @@ function publicUser(user) {
     roomCode: user.roomCode,
     overlayToken: user.overlayToken,
     settings: user.settings,
+    // True once the creator has taken the optional step of linking their
+    // YouTube channel, so the UI can offer it rather than assume it.
+    youtubeLinked: Boolean(user.channelId),
     membersScopeGranted: user.grantedScopes.includes(google.MEMBERS_SCOPE) && user.hasRefreshToken,
   };
 }

@@ -70,10 +70,14 @@ akan menampilkan instruksi).
 
 1. Buka [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials).
 2. **Enabled APIs & services** → aktifkan **YouTube Data API v3**.
-3. **OAuth consent screen** → isi nama aplikasi, email support, dan tambahkan scope:
+3. **OAuth consent screen** → isi nama aplikasi, email support, dan **cukup tambahkan scope
+   non-sensitif saja**:
    - `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile`
-   - `https://www.googleapis.com/auth/youtube.readonly`
-   - *(opsional, hanya untuk mode member)* `https://www.googleapis.com/auth/youtube.channel-memberships.creator`
+
+   > **Jangan deklarasikan `youtube.readonly` di sini.** Scope itu sensitif; mendeklarasikannya
+   > membuat Google mewajibkan verifikasi dan menampilkan layar *"Google belum memverifikasi
+   > aplikasi ini"* kepada **semua** pengguna. Aplikasi ini sengaja tidak memintanya saat login
+   > biasa — lihat "Model scope" di bawah.
 4. Selama status masih **Testing**, tambahkan akun Google kamu di **Test users** —
    kalau tidak, login akan ditolak Google.
 5. **Create credentials → OAuth client ID → Web application**.
@@ -99,15 +103,24 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 > `OAUTH_REDIRECT_URI=https://domain-kamu.com/auth/google/callback` (daftarkan juga di Google
 > Console), dan `NODE_ENV=production` supaya cookie sesi memakai flag `Secure`.
 
-### Layar "Google belum memverifikasi aplikasi ini"
+### Model scope
 
-Muncul karena `youtube.readonly` termasuk *sensitive scope*. Selama development, klik
-**Lanjutan → Buka Drawing In Live (tidak aman)**; akun yang terdaftar sebagai **Test user** bisa
-langsung masuk.
+Izin diminta bertahap, tidak sekaligus di awal, supaya login biasa tidak pernah memicu layar
+peringatan Google:
 
-Untuk menghilangkannya permanen, aplikasi harus diverifikasi Google. Ceklis lengkapnya —
-persyaratan domain, video demo, dan teks justifikasi scope yang siap salin-tempel — ada di
-**[VERIFICATION.md](VERIFICATION.md)**.
+| Kapan | Scope | Sensitif? |
+| --- | --- | --- |
+| Login kreator | `openid`, `email`, `profile` | tidak |
+| Kreator menekan **Hubungkan channel YouTube** di dashboard | + `youtube.readonly` | ya |
+| Penonton masuk ke room **khusus member** | + `youtube.readonly` | ya |
+| Kreator mengaktifkan **cek member otomatis** | + `channel-memberships.creator` | ya |
+
+Konsekuensinya: setelah login pertama, nama dan foto diambil dari Akun Google. Kreator yang
+ingin nama channel YouTube-nya tampil tinggal menekan satu tombol di dashboard.
+
+Layar *"Google belum memverifikasi aplikasi ini"* hanya muncul pada tiga baris terakhir tabel —
+bukan pada login biasa. Kalau nanti kamu ingin menghilangkannya di sana juga, aplikasi harus
+diverifikasi Google; ceklis lengkapnya ada di **[VERIFICATION.md](VERIFICATION.md)**.
 
 ---
 
