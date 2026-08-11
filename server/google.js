@@ -157,17 +157,35 @@ async function fetchOwnChannel(accessToken) {
   try {
     const data = await apiGet(`${YT_API}/channels?part=snippet&mine=true&maxResults=1`, accessToken);
     const item = data.items?.[0];
-    if (!item) return null;
+    // An empty list really does mean this Google account has no channel.
+    if (!item) return { ok: false, reason: 'nochannel', channel: null };
+
     const thumbs = item.snippet?.thumbnails || {};
     return {
-      channelId: item.id,
-      channelTitle: item.snippet?.title || null,
-      channelAvatar: thumbs.medium?.url || thumbs.default?.url || null,
-      customUrl: item.snippet?.customUrl || null,
+      ok: true,
+      reason: null,
+      channel: {
+        channelId: item.id,
+        channelTitle: item.snippet?.title || null,
+        channelAvatar: thumbs.medium?.url || thumbs.default?.url || null,
+        customUrl: item.snippet?.customUrl || null,
+      },
     };
   } catch (err) {
-    console.warn('[google] channels.list failed:', err.reason || err.message);
-    return null;
+    // Distinguish the failure modes. Collapsing them all into "no channel" sends
+    // people hunting for a problem with their YouTube account when the actual
+    // fault is a disabled API or a scope that was never granted.
+    const blob = `${err.reason || ''} ${err.message || ''}`.toLowerCase();
+    let reason = 'failed';
+    if (/accessnotconfigured|has not been used in project|service_disabled|is disabled/.test(blob)) {
+      reason = 'apidisabled';
+    } else if (/insufficient|forbidden|scope|unauthorized|401/.test(blob)) {
+      reason = 'noscope';
+    } else if (/quota/.test(blob)) {
+      reason = 'quota';
+    }
+    console.warn(`[google] channels.list gagal (${reason}):`, err.reason || err.message);
+    return { ok: false, reason, channel: null };
   }
 }
 

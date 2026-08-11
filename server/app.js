@@ -191,9 +191,10 @@ app.get('/auth/google/callback', async (req, res) => {
     // Only reach for the YouTube channel when this grant actually carries the
     // scope; a plain sign-in deliberately does not, and calling anyway would be
     // a guaranteed 403.
-    const channel = google.grantedYouTube(scopes)
+    const lookup = google.grantedYouTube(scopes)
       ? await google.fetchOwnChannel(tokens.access_token)
-      : null;
+      : { ok: false, reason: 'noscope', channel: null };
+    const channel = lookup.channel;
 
     if (flow.role === 'viewer') {
       auth.setViewerSession(res, {
@@ -226,7 +227,9 @@ app.get('/auth/google/callback', async (req, res) => {
       return res.redirect('/dashboard?members=connected');
     }
     if (flow.role === 'youtube') {
-      return res.redirect(channel ? '/dashboard?youtube=connected' : '/dashboard?youtube=nochannel');
+      return res.redirect(lookup.ok
+        ? '/dashboard?youtube=connected'
+        : `/dashboard?youtube=${encodeURIComponent(lookup.reason)}`);
     }
     return res.redirect(safeNext(flow.next, '/dashboard'));
   } catch (err) {

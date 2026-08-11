@@ -406,12 +406,20 @@
       history.replaceState(null, '', '/dashboard');
       loadMemberStatus({ force: true });
     }
-    if (params.get('youtube') === 'connected') {
-      toast('Channel YouTube tersambung.', 'good');
-      history.replaceState(null, '', '/dashboard');
-    }
-    if (params.get('youtube') === 'nochannel') {
-      toast('Akun Google itu belum punya channel YouTube.', 'bad');
+    const yt = params.get('youtube');
+    if (yt) {
+      // Each failure needs its own instruction — "no channel" sent people
+      // looking at their YouTube account when the fault was elsewhere.
+      const YT_MESSAGES = {
+        connected: ['Channel YouTube tersambung.', 'good'],
+        nochannel: ['Akun Google itu memang belum punya channel YouTube.', 'bad'],
+        apidisabled: ['YouTube Data API v3 belum aktif di project Google Cloud kamu. Aktifkan di API Library, lalu coba lagi.', 'bad'],
+        noscope: ['Izin baca channel tidak diberikan. Coba lagi dan setujui akses YouTube-nya.', 'bad'],
+        quota: ['Kuota YouTube API habis untuk hari ini. Coba lagi besok.', 'bad'],
+        failed: ['Gagal membaca channel dari YouTube. Coba lagi sebentar lagi.', 'bad'],
+      };
+      const [message, kind] = YT_MESSAGES[yt] || YT_MESSAGES.failed;
+      toast(message, kind);
       history.replaceState(null, '', '/dashboard');
     }
 
